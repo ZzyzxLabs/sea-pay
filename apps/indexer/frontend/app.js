@@ -1,65 +1,27 @@
-/* global ethers */
+import * as React from "https://esm.sh/react@19.2.3";
+import { createRoot } from "https://esm.sh/react-dom@19.2.3/client";
 
-const configElements = {
-  rpcUrl: document.getElementById("cfgRpcUrl"),
-  tokenAddress: document.getElementById("cfgTokenAddress"),
-  watchAddress: document.getElementById("cfgWatchAddress"),
-  startBlock: document.getElementById("cfgStartBlock"),
-  tokenDecimals: document.getElementById("cfgTokenDecimals"),
-  batchSize: document.getElementById("cfgBatchSize"),
-  pollInterval: document.getElementById("cfgPollInterval"),
+const { useEffect, useMemo, useRef, useState } = React;
+
+const DEFAULTS = {
+  batchSize: 2000,
+  pollInterval: 2000,
+  tokenDecimals: 6,
 };
-
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const clearBtn = document.getElementById("clearBtn");
-const statusText = document.getElementById("statusText");
-const blockMeta = document.getElementById("blockMeta");
-const transferCount = document.getElementById("transferCount");
-const resultsHint = document.getElementById("resultsHint");
-const results = document.getElementById("results");
-
-let running = false;
-let stopRequested = false;
-let stopReason = "";
-let lastBlock = 0;
-let latestBlock = 0;
-let seen = new Set();
-let totalTransfers = 0;
-let appConfig = null;
-
-function setStatus(message) {
-  statusText.textContent = message;
-}
-
-function updateBlockMeta() {
-  if (!appConfig) {
-    blockMeta.textContent = "Waiting for config";
-    return;
-  }
-  const latest = latestBlock > 0 ? latestBlock : "?";
-  blockMeta.textContent = `Last scanned ${lastBlock} | Latest ${latest}`;
-}
-
-function updateTransferCount() {
-  transferCount.textContent = String(totalTransfers);
-  resultsHint.textContent = totalTransfers === 0 ? "No transfers yet." : "";
-}
-
-function resetResults() {
-  results.innerHTML = "";
-  seen = new Set();
-  totalTransfers = 0;
-  updateTransferCount();
-}
-
-function setButtonsEnabled(idle) {
-  startBtn.disabled = !idle;
-  stopBtn.disabled = idle;
-}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseNumber(value, fallback) {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) {
+    return parsed;
+  }
+  return fallback;
 }
 
 function formatConfigValue(value) {
@@ -69,20 +31,10 @@ function formatConfigValue(value) {
   return String(value);
 }
 
-function applyConfig(config) {
-  configElements.rpcUrl.textContent = formatConfigValue(config.rpcUrl);
-  configElements.tokenAddress.textContent = formatConfigValue(config.tokenAddress);
-  configElements.watchAddress.textContent = formatConfigValue(config.watchAddress);
-  configElements.startBlock.textContent = formatConfigValue(config.startBlock);
-  configElements.tokenDecimals.textContent = formatConfigValue(config.tokenDecimals);
-  configElements.batchSize.textContent = formatConfigValue(config.batchSize);
-  configElements.pollInterval.textContent = formatConfigValue(config.pollInterval);
-}
-
-async function fetchConfig() {
-  const response = await fetch("/config.json", { cache: "no-store" });
+async function requestJson(url, fallbackMessage) {
+  const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
-    let errorMessage = "Failed to load config";
+    let errorMessage = fallbackMessage;
     try {
       const data = await response.json();
       if (data && data.error) {
@@ -99,194 +51,381 @@ async function fetchConfig() {
   return response.json();
 }
 
-async function ensureConfig() {
-  if (appConfig) {
-    return appConfig;
+function formatUnits(value, decimals) {
+  if (window.ethers && typeof window.ethers.formatUnits === "function") {
+    return window.ethers.formatUnits(value, decimals);
   }
-  appConfig = await fetchConfig();
-  applyConfig(appConfig);
-  return appConfig;
+  return String(value);
 }
 
-async function fetchPoll({ lastBlockValue, batchSize }) {
-  const params = new URLSearchParams({
-    lastBlock: String(lastBlockValue),
-    batchSize: String(batchSize),
+function App() {
+  const [config, setConfig] = useState(null);
+  const [configError, setConfigError] = useState("");
+  const [status, setStatus] = useState("Loading config...");
+  const [transfers, setTransfers] = useState([]);
+  const [running, setRunning] = useState(false);
+  const [lastBlock, setLastBlock] = useState(0);
+  const [latestBlock, setLatestBlock] = useState(0);
+
+  const runningRef = useRef(false);
+  const stopRef = useRef(false);
+  const stopReasonRef = useRef("");
+  const seenRef = useRef(new Set());
+  const lastBlockRef = useRef(0);
+  const latestBlockRef = useRef(0);
+  const configRef = useRef(null);
+  const settingsRef = useRef({
+    batchSize: DEFAULTS.batchSize,
+    pollInterval: DEFAULTS.pollInterval,
+    decimals: DEFAULTS.tokenDecimals,
   });
-  const response = await fetch(`/api/poll?${params.toString()}`, {
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    let errorMessage = "Polling failed";
+
+  const configLoading = !config && !configError;
+
+  const tokenDecimals = useMemo(() => {
+    if (!config) {
+      return DEFAULTS.tokenDecimals;
+    }
+    return (
+      parseNumber(config.tokenDecimals, DEFAULTS.tokenDecimals) ??
+      DEFAULTS.tokenDecimals
+    );
+  }, [config]);
+
+  const blockMeta = useMemo(() => {
+    if (!config) {
+      return "Waiting for config";
+    }
+    const latestValue = latestBlock > 0 ? latestBlock : "?";
+    return `Last scanned ${lastBlock} | Latest ${latestValue}`;
+  }, [config, lastBlock, latestBlock]);
+
+  const resultsHint = transfers.length === 0 ? "No transfers yet." : "";
+
+  async function fetchConfig() {
+    return requestJson("/config.json", "Failed to load config");
+  }
+
+  async function ensureConfig() {
+    if (configRef.current) {
+      return configRef.current;
+    }
+    const loaded = await fetchConfig();
+    configRef.current = loaded;
+    setConfig(loaded);
+    setConfigError("");
+    return loaded;
+  }
+
+  async function fetchPoll({ lastBlockValue, batchSize }) {
+    const params = new URLSearchParams({
+      lastBlock: String(lastBlockValue),
+      batchSize: String(batchSize),
+    });
+    return requestJson(`/api/poll?${params.toString()}`, "Polling failed");
+  }
+
+  function resetResults() {
+    setTransfers([]);
+    seenRef.current = new Set();
+  }
+
+  async function initConfig() {
     try {
-      const data = await response.json();
-      if (data && data.error) {
-        errorMessage = data.error;
+      setStatus("Loading config...");
+      await ensureConfig();
+      if (!runningRef.current) {
+        setStatus("Idle");
       }
     } catch (error) {
-      const text = await response.text();
-      if (text) {
-        errorMessage = text;
-      }
+      const message = error?.message || "Config load failed";
+      setConfigError(message);
+      setStatus(message);
     }
-    throw new Error(errorMessage);
-  }
-  return response.json();
-}
-
-function renderTransfer(transfer, decimals) {
-  const uniqueKey = `${transfer.txHash}-${transfer.logIndex}`;
-  if (seen.has(uniqueKey)) {
-    return;
-  }
-  seen.add(uniqueKey);
-  totalTransfers += 1;
-  updateTransferCount();
-
-  const formattedValue = ethers.formatUnits(transfer.value, decimals);
-  const directionLabel =
-    transfer.direction === "in"
-      ? "IN"
-      : transfer.direction === "out"
-        ? "OUT"
-        : "SELF";
-
-  const card = document.createElement("article");
-  card.className = "tx-card";
-  card.innerHTML = `
-    <div class="tx-top">
-      <span class="tx-direction ${transfer.direction}">${directionLabel}</span>
-      <span class="tx-hash">${transfer.txHash}</span>
-    </div>
-    <div class="tx-grid">
-      <div>
-        <div class="tx-label">Block</div>
-        <div class="tx-value">${transfer.blockNumber}</div>
-      </div>
-      <div>
-        <div class="tx-label">From</div>
-        <div class="tx-value">${transfer.from}</div>
-      </div>
-      <div>
-        <div class="tx-label">To</div>
-        <div class="tx-value">${transfer.to}</div>
-      </div>
-      <div>
-        <div class="tx-label">Amount</div>
-        <div class="tx-value">${formattedValue}</div>
-      </div>
-      <div>
-        <div class="tx-label">Raw</div>
-        <div class="tx-value">${transfer.value}</div>
-      </div>
-    </div>
-  `;
-
-  results.appendChild(card);
-}
-
-async function startPolling() {
-  if (running) {
-    return;
   }
 
-  try {
-    stopReason = "";
-    const config = await ensureConfig();
+  useEffect(() => {
+    initConfig();
+  }, []);
 
-    const decimals = Number.isFinite(Number(config.tokenDecimals))
-      ? Number(config.tokenDecimals)
-      : 6;
-    const batchSize = Number.isFinite(Number(config.batchSize))
-      ? Number(config.batchSize)
-      : 2000;
-    const pollInterval = Number.isFinite(Number(config.pollInterval))
-      ? Number(config.pollInterval)
-      : 2000;
+  async function startPolling() {
+    if (runningRef.current) {
+      return;
+    }
 
-    resetResults();
-    setStatus("Polling for transfers...");
-    running = true;
-    stopRequested = false;
-    setButtonsEnabled(false);
+    let started = false;
+    try {
+      stopReasonRef.current = "";
+      const loadedConfig = await ensureConfig();
+      const decimals =
+        parseNumber(loadedConfig.tokenDecimals, DEFAULTS.tokenDecimals) ??
+        DEFAULTS.tokenDecimals;
+      const batchSize =
+        parseNumber(loadedConfig.batchSize, DEFAULTS.batchSize) ??
+        DEFAULTS.batchSize;
+      const pollInterval =
+        parseNumber(loadedConfig.pollInterval, DEFAULTS.pollInterval) ??
+        DEFAULTS.pollInterval;
 
-    const startBlockValue = Number(config.startBlock);
-    lastBlock =
-      Number.isFinite(startBlockValue) && startBlockValue >= 0
-        ? startBlockValue
-        : 0;
-    latestBlock = 0;
-    updateBlockMeta();
+      settingsRef.current = { batchSize, pollInterval, decimals };
 
-    while (!stopRequested) {
-      try {
-        const response = await fetchPoll({
-          lastBlockValue: lastBlock,
-          batchSize,
-        });
+      resetResults();
+      setStatus("Polling for transfers...");
+      stopRef.current = false;
+      setRunning(true);
+      runningRef.current = true;
+      started = true;
 
-        latestBlock = Number(response.latestBlock || 0);
-        const toBlock = Number(response.toBlock || lastBlock);
+      const startBlockValue = parseNumber(loadedConfig.startBlock, 0) ?? 0;
+      lastBlockRef.current = startBlockValue >= 0 ? startBlockValue : 0;
+      setLastBlock(lastBlockRef.current);
+      latestBlockRef.current = 0;
+      setLatestBlock(0);
 
-        if (Array.isArray(response.transfers)) {
-          for (const transfer of response.transfers) {
-            renderTransfer(transfer, decimals);
+      while (!stopRef.current) {
+        try {
+          const response = await fetchPoll({
+            lastBlockValue: lastBlockRef.current,
+            batchSize,
+          });
+
+          const latestValue = parseNumber(response.latestBlock, 0) ?? 0;
+          latestBlockRef.current = latestValue;
+          setLatestBlock(latestValue);
+
+          const toBlock =
+            parseNumber(response.toBlock, lastBlockRef.current) ??
+            lastBlockRef.current;
+
+          if (Array.isArray(response.transfers)) {
+            const next = [];
+            for (const transfer of response.transfers) {
+              const uniqueKey = `${transfer.txHash}-${transfer.logIndex ?? 0}`;
+              if (seenRef.current.has(uniqueKey)) {
+                continue;
+              }
+              seenRef.current.add(uniqueKey);
+              next.push(transfer);
+            }
+
+            if (next.length > 0) {
+              setTransfers((prev) => prev.concat(next));
+            }
           }
-        }
 
-        if (Number.isFinite(toBlock)) {
-          lastBlock = toBlock;
-        }
+          if (Number.isFinite(toBlock)) {
+            lastBlockRef.current = toBlock;
+            setLastBlock(toBlock);
+          }
 
-        updateBlockMeta();
-
-        if (lastBlock >= latestBlock) {
+          if (lastBlockRef.current >= latestBlockRef.current) {
+            await sleep(pollInterval);
+          }
+        } catch (error) {
+          const message = error?.message || error;
+          setStatus(`Polling error: ${message}`);
           await sleep(pollInterval);
         }
-      } catch (error) {
-        setStatus(`Polling error: ${error.message || error}`);
-        await sleep(pollInterval);
+      }
+    } catch (error) {
+      const message = error?.message || "Failed to start polling";
+      setStatus(message);
+    } finally {
+      if (started) {
+        runningRef.current = false;
+        setRunning(false);
+        stopRef.current = false;
+        const finalStatus = stopReasonRef.current || "Idle";
+        setStatus(finalStatus);
+        stopReasonRef.current = "";
       }
     }
-  } catch (error) {
-    setStatus(error.message || "Failed to start polling");
-  } finally {
-    running = false;
-    stopRequested = false;
-    if (stopReason) {
-      setStatus(stopReason);
-    } else if (appConfig) {
-      setStatus("Idle");
+  }
+
+  function stopPolling() {
+    if (!runningRef.current) {
+      return;
     }
-    setButtonsEnabled(true);
-    updateBlockMeta();
+    stopRef.current = true;
+    stopReasonRef.current = "Stopped";
+    setStatus("Stopping...");
   }
+
+  function clearTransfers() {
+    resetResults();
+  }
+
+  function renderConfigValue(value) {
+    if (configLoading) {
+      return "Loading...";
+    }
+    if (configError) {
+      return "Error";
+    }
+    return formatConfigValue(value);
+  }
+
+  return (
+    <main className="app">
+      <header className="hero">
+        <div>
+          <p className="eyebrow">SeaPay Indexer</p>
+          <h1>Poll ERC20 transfers by address</h1>
+          <p className="lede">
+            Paste an EVM address and watch all related transfers stream in.
+          </p>
+        </div>
+        <div className="hero-badge">
+          <div className="pulse"></div>
+          <span>Live polling console</span>
+        </div>
+      </header>
+
+      <section className="panel">
+        <div id="controls" className="controls">
+          <div className="config-item">
+            <span className="config-label">RPC URL</span>
+            <span id="cfgRpcUrl" className="config-value">
+              {renderConfigValue(config?.rpcUrl)}
+            </span>
+          </div>
+          <div className="config-item">
+            <span className="config-label">Token contract</span>
+            <span id="cfgTokenAddress" className="config-value">
+              {renderConfigValue(config?.tokenAddress)}
+            </span>
+          </div>
+          <div className="config-item">
+            <span className="config-label">Watch address</span>
+            <span id="cfgWatchAddress" className="config-value">
+              {renderConfigValue(config?.watchAddress)}
+            </span>
+          </div>
+          <div className="config-item">
+            <span className="config-label">Start block</span>
+            <span id="cfgStartBlock" className="config-value">
+              {renderConfigValue(config?.startBlock)}
+            </span>
+          </div>
+          <div className="config-item">
+            <span className="config-label">Token decimals</span>
+            <span id="cfgTokenDecimals" className="config-value">
+              {renderConfigValue(config?.tokenDecimals)}
+            </span>
+          </div>
+          <div className="config-item">
+            <span className="config-label">Batch size</span>
+            <span id="cfgBatchSize" className="config-value">
+              {renderConfigValue(config?.batchSize)}
+            </span>
+          </div>
+          <div className="config-item">
+            <span className="config-label">Poll interval (ms)</span>
+            <span id="cfgPollInterval" className="config-value">
+              {renderConfigValue(config?.pollInterval)}
+            </span>
+          </div>
+          <div className="actions">
+            <button
+              id="startBtn"
+              type="button"
+              onClick={startPolling}
+              disabled={running || configLoading || !!configError}
+            >
+              Start polling
+            </button>
+            <button
+              id="stopBtn"
+              type="button"
+              className="secondary"
+              onClick={stopPolling}
+              disabled={!running}
+            >
+              Stop
+            </button>
+            <button
+              id="clearBtn"
+              type="button"
+              className="ghost"
+              onClick={clearTransfers}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div className="status" role="status" aria-live="polite">
+          <div className="status-row">
+            <span className="status-label">Status</span>
+            <span id="statusText">{status}</span>
+          </div>
+          <div className="status-row">
+            <span className="status-label">Blocks</span>
+            <span id="blockMeta">{blockMeta}</span>
+          </div>
+          <div className="status-row">
+            <span className="status-label">Transfers</span>
+            <span id="transferCount">{transfers.length}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="results">
+        <div className="results-header">
+          <h2>Transfers</h2>
+          <p className="muted" id="resultsHint">
+            {resultsHint}
+          </p>
+        </div>
+        <div id="results" className="results-list">
+          {transfers.map((transfer, index) => {
+            const direction =
+              transfer.direction === "in" || transfer.direction === "out"
+                ? transfer.direction
+                : "self";
+            const directionLabel =
+              direction === "in" ? "IN" : direction === "out" ? "OUT" : "SELF";
+            const key = `${transfer.txHash}-${transfer.logIndex ?? index}`;
+            const formattedValue = formatUnits(transfer.value, tokenDecimals);
+
+            return (
+              <article key={key} className="tx-card">
+                <div className="tx-top">
+                  <span className={`tx-direction ${direction}`}>
+                    {directionLabel}
+                  </span>
+                  <span className="tx-hash">{transfer.txHash}</span>
+                </div>
+                <div className="tx-grid">
+                  <div>
+                    <div className="tx-label">Block</div>
+                    <div className="tx-value">{transfer.blockNumber}</div>
+                  </div>
+                  <div>
+                    <div className="tx-label">From</div>
+                    <div className="tx-value">{transfer.from}</div>
+                  </div>
+                  <div>
+                    <div className="tx-label">To</div>
+                    <div className="tx-value">{transfer.to}</div>
+                  </div>
+                  <div>
+                    <div className="tx-label">Amount</div>
+                    <div className="tx-value">{formattedValue}</div>
+                  </div>
+                  <div>
+                    <div className="tx-label">Raw</div>
+                    <div className="tx-value">{String(transfer.value)}</div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </main>
+  );
 }
 
-function stopPolling() {
-  if (!running) {
-    return;
-  }
-  stopRequested = true;
-  stopReason = "Stopped";
-  setStatus("Stopping...");
-}
-
-async function initConfig() {
-  try {
-    setStatus("Loading config...");
-    await ensureConfig();
-    setStatus("Idle");
-  } catch (error) {
-    setStatus(error.message || "Config load failed");
-  }
-}
-
-startBtn.addEventListener("click", startPolling);
-stopBtn.addEventListener("click", stopPolling);
-clearBtn.addEventListener("click", resetResults);
-
-updateBlockMeta();
-updateTransferCount();
-setButtonsEnabled(true);
-initConfig();
+const root = createRoot(document.getElementById("root"));
+root.render(<App />);

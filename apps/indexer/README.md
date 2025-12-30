@@ -1,64 +1,145 @@
-# SeaPay Indexer
+# Indexer - Real-Time Webhook Activity Monitor
 
-A blockchain indexer service that polls for ERC20 token transfers to specific deposit addresses.
+A real-time webhook monitoring system that displays blockchain transaction events using WebSockets.
 
-## Features
+## Architecture
 
-- Polls ERC20 Transfer events in batches
-- Filters transfers by destination address
-- Configurable batch size and polling interval
-- Error handling and retry logic
+- **Webhook Server** (Port 3000): Express.js server with Socket.io that receives webhook POST requests and broadcasts them to connected clients
+- **Frontend** (Port 3001): Next.js application that displays real-time transaction activity
 
-## Setup
+## Getting Started
 
-1. Copy the environment example file:
+### Prerequisites
 
-```bash
-cp env.example .env
-```
+- Node.js 18+
+- pnpm
 
-2. Configure your `.env` file with the required values:
+### Installation
 
-- `RPC_URL` - Your Ethereum RPC provider URL (e.g., Alchemy, Infura)
-- `USDC_ADDRESS` - The ERC20 token contract address to monitor
-- `DEPOSIT_ADDRESS` - The address to monitor transfers TO
-- `START_BLOCK` - Starting block number (default: 0)
-- `BATCH_SIZE` - Number of blocks to poll per batch (default: 2000)
-- `POLL_INTERVAL_MS` - Poll interval when no new blocks (default: 2000ms)
+Both the webhook server and frontend have their dependencies already installed.
 
-## Development
+### Running the Application
 
-Run in development mode:
+You need to run both servers in separate terminal windows:
+
+#### Terminal 1: Start the Webhook Server
 
 ```bash
+cd apps/indexer/webhook
 pnpm dev
 ```
 
-Build:
+The webhook server will start on `http://localhost:3000`
+
+#### Terminal 2: Start the Frontend
 
 ```bash
-pnpm build
+cd apps/indexer/frontendv2
+pnpm dev
 ```
 
-Run production build:
+The frontend will start on `http://localhost:3001`
+
+### Testing the Webhook
+
+Once both servers are running, you can test the webhook in a third terminal:
+
+#### Option 1: Using the test script
 
 ```bash
-pnpm start
+cd apps/indexer/webhook
+./test-webhook.sh
 ```
 
-## How It Works
+#### Option 2: Using curl directly
 
-1. The indexer connects to an Ethereum RPC provider
-2. It polls for new blocks starting from `START_BLOCK`
-3. For each batch of blocks, it queries for ERC20 Transfer events
-4. Filters events where the `to` address matches `DEPOSIT_ADDRESS`
-5. Logs detected transfers (ready for integration with session matching logic)
+```bash
+curl -X POST http://localhost:3000/webhook \
+  -H "Content-Type: application/json" \
+  -d @frontendv2/src/app/response.example.json
+```
 
-## Next Steps
+## Features
 
-- [ ] Add database/Redis persistence for `lastBlock`
-- [ ] Implement session lookup by depositAddress + tokenAddress
-- [ ] Add amount comparison logic (amount >= requiredAmount)
-- [ ] Mark sessions as PAID with txHash and paidAmount
-- [ ] Add health check endpoints
-- [ ] Add metrics/monitoring
+### Webhook Server
+- Receives POST requests at `/webhook`
+- Broadcasts webhook data to all connected WebSocket clients
+- CORS enabled for the frontend
+- Connection/disconnection logging
+
+### Frontend
+- Real-time activity feed
+- Connection status indicator
+- Transaction details display:
+  - From/To addresses with copy-to-clipboard
+  - Transaction hash with Sepolia Etherscan link
+  - Block number and timestamp
+  - Asset type and value
+- Responsive design with dark mode support
+- Animations for new activities
+- Displays last 50 activities (ephemeral)
+
+## File Structure
+
+```
+apps/indexer/
+├── webhook/
+│   ├── server.js           # Express + Socket.io webhook server
+│   ├── test-webhook.sh     # Test script
+│   └── package.json
+├── frontendv2/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx           # Main page
+│   │   │   ├── globals.css        # Global styles & animations
+│   │   │   └── response.example.json
+│   │   ├── components/
+│   │   │   ├── ActivityFeed.tsx   # Main feed component
+│   │   │   └── ActivityCard.tsx   # Individual activity card
+│   │   └── hooks/
+│   │       └── useWebSocket.ts    # WebSocket connection hook
+│   └── package.json
+└── README.md
+```
+
+## Development
+
+### Webhook Server
+
+The webhook server uses:
+- Express.js for HTTP endpoints
+- Socket.io for WebSocket connections
+- CORS configured for `http://localhost:3001`
+
+### Frontend
+
+The frontend is built with:
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Socket.io Client
+
+## Data Flow
+
+1. External service sends POST request to `http://localhost:3000/webhook`
+2. Webhook server receives data and logs it
+3. Server broadcasts data via Socket.io to all connected clients
+4. Frontend receives data through WebSocket connection
+5. UI updates in real-time showing the new activity
+
+## Environment
+
+- Webhook Server: Port 3000
+- Frontend: Port 3001
+- Network: ETH Sepolia (testnet)
+
+## Future Enhancements
+
+- Data persistence (database)
+- Historical data viewing
+- Filtering by address/asset/network
+- Search functionality
+- Export to CSV
+- Real-time charts and analytics
+- Push notifications for specific addresses

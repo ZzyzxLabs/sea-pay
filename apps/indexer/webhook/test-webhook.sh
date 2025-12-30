@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# Test script to send sample webhook data to localhost:3000/webhook
+
+echo "Sending test webhook data..."
+
+curl -X POST http://localhost:3000/webhook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "webhookId": "wh_wjgi64e3l8sxwu9h",
+    "id": "whevt_5v5xlgiujikduopp",
+    "createdAt": "2025-12-30T06:57:13.871Z",
+    "type": "ADDRESS_ACTIVITY",
+    "event": {
+      "network": "ETH_SEPOLIA",
+      "activity": [
+        {
+          "fromAddress": "0x01ce860765c07826012acbcb48f3a7ba72dd012c",
+          "toAddress": "0xc3fcef45c5a450d59e5f917ed14a747649dbb360",
+          "blockNum": "0x97ba55",
+          "hash": "0x334693211248a2bfc8dc6006a8f9bb135912c58e9421231b5c5e11ba63a115b8",
+          "value": 0.001,
+          "asset": "USDC",
+          "category": "token",
+          "rawContract": {
+            "rawValue": "0x00000000000000000000000000000000000000000000000000000000000003e8",
+            "address": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+            "decimals": 6
+          },
+          "log": {
+            "address": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+            "topics": [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x00000000000000000000000001ce860765c07826012acbcb48f3a7ba72dd012c",
+              "0x000000000000000000000000c3fcef45c5a450d59e5f917ed14a747649dbb360"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000000000000000003e8",
+            "blockHash": "0xe7190f1553c60bae85d8535072c3c86d977124ea31813a61e43116071da41740",
+            "blockNumber": "0x97ba55",
+            "blockTimestamp": "0x695377c8",
+            "transactionHash": "0x334693211248a2bfc8dc6006a8f9bb135912c58e9421231b5c5e11ba63a115b8",
+            "transactionIndex": "0x27",
+            "logIndex": "0x33",
+            "removed": false
+          },
+          "blockTimestamp": "0x695377c8"
+        }
+      ],
+      "source": "chainlake-kafka"
+    }
+  }'
+
+echo ""
+echo "Test webhook sent!"

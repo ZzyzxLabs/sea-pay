@@ -13,88 +13,9 @@
     />
   </head>
   <body>
-    <main class="app">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">SeaPay Indexer</p>
-          <h1>Poll ERC20 transfers by address</h1>
-          <p class="lede">
-            Paste an EVM address and watch all related transfers stream in.
-          </p>
-        </div>
-        <div class="hero-badge">
-          <div class="pulse"></div>
-          <span>Live polling console</span>
-        </div>
-      </header>
-
-      <section class="panel">
-        <div id="controls" class="controls">
-          <div class="config-item">
-            <span class="config-label">RPC URL</span>
-            <span id="cfgRpcUrl" class="config-value">Loading...</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Token contract</span>
-            <span id="cfgTokenAddress" class="config-value">Loading...</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Watch address</span>
-            <span id="cfgWatchAddress" class="config-value">Loading...</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Start block</span>
-            <span id="cfgStartBlock" class="config-value">Loading...</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Token decimals</span>
-            <span id="cfgTokenDecimals" class="config-value">Loading...</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Batch size</span>
-            <span id="cfgBatchSize" class="config-value">Loading...</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Poll interval (ms)</span>
-            <span id="cfgPollInterval" class="config-value">Loading...</span>
-          </div>
-          <div class="actions">
-            <button id="startBtn" type="button">Start polling</button>
-            <button id="stopBtn" type="button" class="secondary" disabled>
-              Stop
-            </button>
-            <button id="clearBtn" type="button" class="ghost">
-              Clear
-            </button>
-          </div>
-        </div>
-
-        <div class="status" role="status" aria-live="polite">
-          <div class="status-row">
-            <span class="status-label">Status</span>
-            <span id="statusText">Idle</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Blocks</span>
-            <span id="blockMeta">Waiting for input</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Transfers</span>
-            <span id="transferCount">0</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="results">
-        <div class="results-header">
-          <h2>Transfers</h2>
-          <p class="muted" id="resultsHint">No transfers yet.</p>
-        </div>
-        <div id="results" class="results-list"></div>
-      </section>
-    </main>
+    <div id="root"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
-    <script src="./app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>
