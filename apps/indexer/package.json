@@ -6,6 +6,7 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsx src/main.ts",
+    "dev:frontend": "tsx src/frontend-server.ts",
     "build": "tsc",
     "start": "node dist/main.js"
   },
