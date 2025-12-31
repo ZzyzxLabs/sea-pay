@@ -18,6 +18,25 @@ A real-time webhook monitoring system that displays blockchain transaction event
 
 Both the webhook server and frontend have their dependencies already installed.
 
+### Configuration
+
+Before running the application, configure your Alchemy API credentials:
+
+1. Copy the `.env.local.example` file in `frontendv2/`:
+   ```bash
+   cd apps/indexer/frontendv2
+   cp .env.local.example .env.local
+   ```
+
+2. Edit `.env.local` and add your Alchemy credentials:
+   ```
+   ALCHEMY_TOKEN=your-actual-alchemy-token
+   WEBHOOK_ID=wh_wjgi64e3l8sxwu9h
+   ```
+
+   - Get your `ALCHEMY_TOKEN` from the [Alchemy Dashboard](https://dashboard.alchemy.com)
+   - The `WEBHOOK_ID` should match your webhook configuration
+
 ### Running the Application
 
 You need to run both servers in separate terminal windows:
@@ -68,7 +87,9 @@ curl -X POST http://localhost:3000/webhook \
 - Connection/disconnection logging
 
 ### Frontend
-- Real-time activity feed
+
+#### All Activity Feed (`/`)
+- Real-time activity feed showing ALL webhook events
 - Connection status indicator
 - Transaction details display:
   - From/To addresses with copy-to-clipboard
@@ -78,6 +99,16 @@ curl -X POST http://localhost:3000/webhook \
 - Responsive design with dark mode support
 - Animations for new activities
 - Displays last 50 activities (ephemeral)
+
+#### Filtered Monitor (`/monitor`)
+- **Form-based filtering** for specific wallet addresses and amounts
+- **Alchemy webhook integration** - automatically adds/removes addresses from your Alchemy webhook
+- Only displays transactions that match BOTH:
+  - Wallet address (from OR to)
+  - Exact transaction amount
+- Real-time updates when matching transactions occur
+- Start/Stop monitoring controls
+- Error handling and loading states
 
 ## File Structure
 

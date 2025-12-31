@@ -2,6 +2,7 @@
 
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { ActivityCard } from "./ActivityCard";
+import Link from "next/link";
 
 export function ActivityFeed() {
   const { status, activities } = useWebSocket();
@@ -34,9 +35,22 @@ export function ActivityFeed() {
             Real-time blockchain transaction events from ETH Sepolia
           </p>
         </div>
-        <div className="hero-badge">
-          <span className="pulse" />
-          <span>{getStatusText()}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Link
+            href="/monitor"
+            style={{
+              color: 'var(--color-blue-600)',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: '500'
+            }}
+          >
+            Filtered Monitor →
+          </Link>
+          <div className="hero-badge">
+            <span className="pulse" />
+            <span>{getStatusText()}</span>
+          </div>
         </div>
       </header>
 
@@ -86,7 +100,6 @@ export function ActivityFeed() {
         <div className="results-list">
           {activities.length === 0 ? (
             <div className="tx-card empty-state">
-              <div className="empty-icon">📡</div>
               <h3>No activities yet</h3>
               <p className="muted">Waiting for webhook events to arrive...</p>
               {status === "connected" && (
