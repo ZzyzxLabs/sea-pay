@@ -312,6 +312,78 @@ h1 {
   animation: fadeIn 0.4s ease;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.35);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  z-index: 30;
+}
+
+.modal-card {
+  width: min(440px, 100%);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  animation: rise 0.4s ease both;
+  position: relative;
+}
+
+.modal-body {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+  min-height: 260px;
+  align-content: center;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: rgba(26, 26, 26, 0.4);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modal-lottie {
+  width: 180px;
+  height: 180px;
+  margin: 0 auto;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.modal-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.modal-wallet {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
 .empty-state {
   text-align: center;
   padding: 28px;
@@ -430,6 +502,11 @@ button:not(:disabled):hover {
   box-shadow: 0 10px 25px rgba(255, 107, 53, 0.25);
 }
 
+button.modal-close:hover {
+  box-shadow: none;
+  color: rgba(26, 26, 26, 0.75);
+}
+
 button.inline-button:hover {
   transform: none;
   box-shadow: none;
@@ -494,6 +571,12 @@ button.ghost {
   }
 }
 
+@keyframes checkStroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -544,6 +627,14 @@ button.ghost {
   .results-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .success-card {
+    grid-template-columns: 1fr;
+  }
+
+  .checkmark-wrapper {
+    justify-self: flex-start;
   }
 
   .status-row {

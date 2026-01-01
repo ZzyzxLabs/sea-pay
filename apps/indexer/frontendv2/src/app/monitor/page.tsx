@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFilteredWebSocket } from "@/hooks/useFilteredWebSocket";
-import { ActivityCard } from "@/components/ActivityCard";
 import Link from "next/link";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 export default function MonitorPage() {
   const [walletAddress, setWalletAddress] = useState("");
@@ -11,6 +11,11 @@ export default function MonitorPage() {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [matchPhase, setMatchPhase] = useState<"idle" | "loading" | "success">(
+    "idle"
+  );
+  const [lastSender, setLastSender] = useState<string | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [filterConfig, setFilterConfig] = useState<{
     address: string;
     amount: number;
@@ -62,6 +67,9 @@ export default function MonitorPage() {
         amount: parsedAmount,
       });
       setIsMonitoring(true);
+      setMatchPhase("loading");
+      setLastSender(null);
+      setIsPopupOpen(true);
     } catch (err) {
       console.error("Error adding address to webhook:", err);
       setError(
@@ -102,6 +110,8 @@ export default function MonitorPage() {
       // Stop monitoring
       setFilterConfig(null);
       setIsMonitoring(false);
+      setMatchPhase("idle");
+      setIsPopupOpen(false);
     } catch (err) {
       console.error("Error removing address from webhook:", err);
       setError(
@@ -123,13 +133,28 @@ export default function MonitorPage() {
     }
   };
 
+  const hasMatch = matchPhase === "success";
+
   const resultsHint = isMonitoring
-    ? activities.length === 0
-      ? "Waiting for matching transactions"
-      : `Found ${activities.length} matching ${
-          activities.length === 1 ? "transaction" : "transactions"
-        }`
+    ? hasMatch
+      ? "Match received"
+      : "Waiting for matching transactions"
     : 'Fill in the form above and click "Start Monitoring" to begin';
+
+  useEffect(() => {
+    if (activities.length > 0) {
+      setMatchPhase("success");
+      setLastSender(activities[0].fromAddress);
+    }
+  }, [activities]);
+
+  useEffect(() => {
+    if (!isMonitoring) {
+      setMatchPhase("idle");
+      setLastSender(null);
+      setIsPopupOpen(false);
+    }
+  }, [isMonitoring]);
 
   return (
     <main className="app">
@@ -138,7 +163,7 @@ export default function MonitorPage() {
           <p className="eyebrow">SeaPay Monitor</p>
           <h1>Transaction Monitor</h1>
           <p className="lede">
-            Monitor specific wallet transactions with exact amount matching
+            Recieve Payments with Ease
           </p>
           <Link href="/" className="tx-link hero-link">
             View all activity
@@ -244,37 +269,27 @@ export default function MonitorPage() {
         )}
       </section>
 
-      <section className="results">
+      {/* <section className="results">
         <div className="results-header">
           <h2>Matches</h2>
           <p className="muted">{resultsHint}</p>
         </div>
         <div className="results-list">
           {isMonitoring ? (
-            activities.length === 0 ? (
-              <div className="tx-card empty-state">
-                <div className="empty-icon">🔍</div>
-                <h3>Monitoring...</h3>
-                <p className="muted">Waiting for matching transactions</p>
-                {filterConfig && (
-                  <>
-                    <p className="muted small">
-                      Address: {filterConfig.address}
-                    </p>
-                    <p className="muted small">
-                      Amount: {filterConfig.amount}
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : (
-              activities.map((activity, index) => (
-                <ActivityCard
-                  key={`${activity.hash}-${index}`}
-                  activity={activity}
-                />
-              ))
-            )
+            <div className="tx-card empty-state">
+              <h3>{hasMatch ? "Match received" : "Monitoring..."}</h3>
+              <p className="muted">
+                {hasMatch
+                  ? "Check the popup for details."
+                  : "Waiting for matching transactions"}
+              </p>
+              {filterConfig && !hasMatch && (
+                <>
+                  <p className="muted small">Address: {filterConfig.address}</p>
+                  <p className="muted small">Amount: {filterConfig.amount}</p>
+                </>
+              )}
+            </div>
           ) : (
             <div className="tx-card empty-state">
               <h3>Not Monitoring</h3>
@@ -284,7 +299,44 @@ export default function MonitorPage() {
             </div>
           )}
         </div>
-      </section>
+      </section> */}
+
+      {isMonitoring && isPopupOpen && (
+        <div className="modal-backdrop" role="status" aria-live="polite">
+          <div className="modal-card">
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setIsPopupOpen(false)}
+              aria-label="Close popup"
+            >
+              x
+            </button>
+            <div className="modal-body">
+              <DotLottieReact
+                src={hasMatch ? "/lottie/Success.json" : "/lottie/Loading.json"}
+                autoplay
+                loop={!hasMatch}
+                className="modal-lottie"
+              />
+              <h3 className="modal-title">
+                {hasMatch ? "Payment received" : "Monitoring..."}
+              </h3>
+              <p className="modal-subtitle">
+                {hasMatch
+                  ? "Transaction matched your filters."
+                  : "Waiting for the next matching transaction."}
+              </p>
+              {hasMatch && lastSender && (
+                <div className="modal-wallet">
+                  <span className="tx-label">Sending wallet</span>
+                  <span className="tx-value">{lastSender}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
