@@ -7,6 +7,7 @@ import { Activity, WebhookData, ConnectionStatus } from "./useWebSocket";
 interface FilterConfig {
   address: string; // Wallet address to monitor (lowercase)
   amount: number; // Exact amount to match
+  asset: string; // Asset type to match (e.g., "ETH", "USDC")
 }
 
 export function useFilteredWebSocket(filterConfig: FilterConfig | null) {
@@ -58,6 +59,7 @@ export function useFilteredWebSocket(filterConfig: FilterConfig | null) {
           const toMatches =
             activity.toAddress.toLowerCase() === filterConfig.address;
           const amountMatches = activity.value === filterConfig.amount;
+          const assetMatches = activity.asset === filterConfig.asset;
 
           // Match if address is in to, AND amount matches exactly
           return toMatches && amountMatches;

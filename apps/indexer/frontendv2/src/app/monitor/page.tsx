@@ -1,19 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFilteredWebSocket } from "@/hooks/useFilteredWebSocket";
-import { ActivityCard } from "@/components/ActivityCard";
 import Link from "next/link";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 export default function MonitorPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [amount, setAmount] = useState("");
+  const [assetType, setAssetType] = useState("ETH");
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [matchPhase, setMatchPhase] = useState<"idle" | "loading" | "success">(
+    "idle"
+  );
+  const [lastSender, setLastSender] = useState<string | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [filterConfig, setFilterConfig] = useState<{
     address: string;
     amount: number;
+    asset: string;
   } | null>(null);
 
   const { status, activities } = useFilteredWebSocket(filterConfig);
@@ -21,8 +28,8 @@ export default function MonitorPage() {
   const handleStartMonitoring = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!walletAddress.trim() || !amount.trim()) {
-      setError("Please enter both wallet address and amount");
+    if (!walletAddress.trim() || !amount.trim() || !assetType.trim()) {
+      setError("Please enter wallet address, amount, and asset type");
       return;
     }
 
@@ -60,8 +67,12 @@ export default function MonitorPage() {
       setFilterConfig({
         address: walletAddress.trim().toLowerCase(),
         amount: parsedAmount,
+        asset: assetType || "USDC",
       });
       setIsMonitoring(true);
+      setMatchPhase("loading");
+      setLastSender(null);
+      setIsPopupOpen(true);
     } catch (err) {
       console.error("Error adding address to webhook:", err);
       setError(
@@ -102,6 +113,8 @@ export default function MonitorPage() {
       // Stop monitoring
       setFilterConfig(null);
       setIsMonitoring(false);
+      setMatchPhase("idle");
+      setIsPopupOpen(false);
     } catch (err) {
       console.error("Error removing address from webhook:", err);
       setError(
@@ -123,23 +136,35 @@ export default function MonitorPage() {
     }
   };
 
+  const hasMatch = matchPhase === "success";
+
   const resultsHint = isMonitoring
-    ? activities.length === 0
-      ? "Waiting for matching transactions"
-      : `Found ${activities.length} matching ${
-          activities.length === 1 ? "transaction" : "transactions"
-        }`
+    ? hasMatch
+      ? "Match received"
+      : "Waiting for matching transactions"
     : 'Fill in the form above and click "Start Monitoring" to begin';
+
+  useEffect(() => {
+    if (activities.length > 0) {
+      setMatchPhase("success");
+      setLastSender(activities[0].fromAddress);
+    }
+  }, [activities]);
+
+  useEffect(() => {
+    if (!isMonitoring) {
+      setMatchPhase("idle");
+      setLastSender(null);
+      setIsPopupOpen(false);
+    }
+  }, [isMonitoring]);
 
   return (
     <main className="app">
       <header className="hero">
         <div>
-          <p className="eyebrow">SeaPay Monitor</p>
-          <h1>Transaction Monitor</h1>
-          <p className="lede">
-            Monitor specific wallet transactions with exact amount matching
-          </p>
+          <p className="eyebrow">SeaPay</p>
+          <h1>Receive Payments</h1>
           <Link href="/" className="tx-link hero-link">
             View all activity
           </Link>
@@ -151,7 +176,7 @@ export default function MonitorPage() {
       </header>
 
       <section className="panel">
-        <div className="status" role="status" aria-live="polite">
+        {/* <div className="status" role="status" aria-live="polite">
           <div className="status-row">
             <span className="status-label">Status</span>
             <span>{getStatusText()}</span>
@@ -164,7 +189,7 @@ export default function MonitorPage() {
             <span className="status-label">Matches</span>
             <span>{activities.length}</span>
           </div>
-        </div>
+        </div> */}
 
         <form onSubmit={handleStartMonitoring} className="form-grid">
           <div className="form-item">
@@ -204,6 +229,24 @@ export default function MonitorPage() {
             </p>
           </div>
 
+          <div className="form-item">
+            <label htmlFor="assetType" className="form-label">
+              Asset Type
+            </label>
+            <select
+              id="assetType"
+              value={assetType}
+              onChange={(e) => setAssetType(e.target.value)}
+              disabled={isMonitoring}
+              className="form-input"
+            >
+              <option value="ETH">ETH</option>
+              <option value="USDC">USDC</option>
+              <option value="USDT">USDT</option>
+            </select>
+            <p className="form-help">Choose the asset to monitor</p>
+          </div>
+
           <div className="actions">
             {!isMonitoring ? (
               <button type="submit" disabled={isLoading} id="startBtn">
@@ -237,44 +280,34 @@ export default function MonitorPage() {
               <span className="status-label">Monitoring</span>
               <span className="status-message">
                 Address {filterConfig.address} for transactions of exactly{" "}
-                {filterConfig.amount}
+                {filterConfig.amount} {assetType}
               </span>
             </div>
           </div>
         )}
       </section>
 
-      <section className="results">
+      {/* <section className="results">
         <div className="results-header">
           <h2>Matches</h2>
           <p className="muted">{resultsHint}</p>
         </div>
         <div className="results-list">
           {isMonitoring ? (
-            activities.length === 0 ? (
-              <div className="tx-card empty-state">
-                <div className="empty-icon">🔍</div>
-                <h3>Monitoring...</h3>
-                <p className="muted">Waiting for matching transactions</p>
-                {filterConfig && (
-                  <>
-                    <p className="muted small">
-                      Address: {filterConfig.address}
-                    </p>
-                    <p className="muted small">
-                      Amount: {filterConfig.amount}
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : (
-              activities.map((activity, index) => (
-                <ActivityCard
-                  key={`${activity.hash}-${index}`}
-                  activity={activity}
-                />
-              ))
-            )
+            <div className="tx-card empty-state">
+              <h3>{hasMatch ? "Match received" : "Monitoring..."}</h3>
+              <p className="muted">
+                {hasMatch
+                  ? "Check the popup for details."
+                  : "Waiting for matching transactions"}
+              </p>
+              {filterConfig && !hasMatch && (
+                <>
+                  <p className="muted small">Address: {filterConfig.address}</p>
+                  <p className="muted small">Amount: {filterConfig.amount}</p>
+                </>
+              )}
+            </div>
           ) : (
             <div className="tx-card empty-state">
               <h3>Not Monitoring</h3>
@@ -284,7 +317,51 @@ export default function MonitorPage() {
             </div>
           )}
         </div>
-      </section>
+      </section> */}
+
+      {isMonitoring && isPopupOpen && (
+        <div className="modal-backdrop" role="status" aria-live="polite">
+          <div className="modal-card">
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setIsPopupOpen(false)}
+              aria-label="Close popup"
+            >
+              x
+            </button>
+            <div className="modal-body">
+              {hasMatch ? (
+                <DotLottieReact
+                  key="success"
+                  src="/lottie/Success.json"
+                  autoplay
+                  loop={false}
+                  className="modal-lottie"
+                />
+              ) : (
+                <DotLottieReact
+                  key="loading"
+                  src="/lottie/Loading.json"
+                  autoplay
+                  loop={true}
+                  className="modal-lottie"
+                />
+              )}
+              
+              <h3 className="modal-title">
+                {hasMatch ? "Payment received" : "Waiting for payment..."}
+              </h3>
+              {hasMatch && lastSender && (
+                <div className="modal-wallet">
+                  <span className="tx-value text-sm">Amount: {amount} {assetType}</span>
+                  <span className="tx-label">From: {lastSender}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
