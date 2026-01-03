@@ -1,0 +1,53 @@
+{
+  "name": "@seapay-ai/erc3009",
+  "version": "0.1.0",
+  "description": "TypeScript utilities for ERC-3009 (Transfer With Authorization) EIP-712 signing",
+  "keywords": [
+    "erc3009",
+    "erc-3009",
+    "eip-712",
+    "ethereum",
+    "ethers",
+    "typed-data",
+    "signature",
+    "authorization",
+    "meta-transactions"
+  ],
+  "author": "Frederic Hsieh",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "prepublishOnly": "pnpm build",
+    "lint": "echo \"no lint configured\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ethers": "^6.16.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZzyzxLabs/sea-pay",
+    "directory": "packages/erc3009"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
