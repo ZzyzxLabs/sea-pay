@@ -313,20 +313,27 @@ export default function MonitorPage() {
               x
             </button>
             <div className="modal-body">
-              <DotLottieReact
-                src={hasMatch ? "/lottie/Success.json" : "/lottie/Loading.json"}
-                autoplay
-                loop={!hasMatch}
-                className="modal-lottie"
-              />
+              {hasMatch ? (
+                <DotLottieReact
+                  key="success"
+                  src="/lottie/Success.json"
+                  autoplay
+                  loop={false}
+                  className="modal-lottie"
+                />
+              ) : (
+                <DotLottieReact
+                  key="loading"
+                  src="/lottie/Loading.json"
+                  autoplay
+                  loop={true}
+                  className="modal-lottie"
+                />
+              )}
+              
               <h3 className="modal-title">
-                {hasMatch ? "Payment received" : "Monitoring..."}
+                {hasMatch ? "Payment received" : "Waiting for payment..."}
               </h3>
-              <p className="modal-subtitle">
-                {hasMatch
-                  ? "Transaction matched your filters."
-                  : "Waiting for the next matching transaction."}
-              </p>
               {hasMatch && lastSender && (
                 <div className="modal-wallet">
                   <span className="tx-label">Sending wallet</span>
