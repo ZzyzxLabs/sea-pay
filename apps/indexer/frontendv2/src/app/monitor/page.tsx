@@ -8,6 +8,7 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 export default function MonitorPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [amount, setAmount] = useState("");
+  const [assetType, setAssetType] = useState("ETH");
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export default function MonitorPage() {
   const [filterConfig, setFilterConfig] = useState<{
     address: string;
     amount: number;
+    asset: string;
   } | null>(null);
 
   const { status, activities } = useFilteredWebSocket(filterConfig);
@@ -26,8 +28,8 @@ export default function MonitorPage() {
   const handleStartMonitoring = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!walletAddress.trim() || !amount.trim()) {
-      setError("Please enter both wallet address and amount");
+    if (!walletAddress.trim() || !amount.trim() || !assetType.trim()) {
+      setError("Please enter wallet address, amount, and asset type");
       return;
     }
 
@@ -65,6 +67,7 @@ export default function MonitorPage() {
       setFilterConfig({
         address: walletAddress.trim().toLowerCase(),
         amount: parsedAmount,
+        asset: assetType || "USDC",
       });
       setIsMonitoring(true);
       setMatchPhase("loading");
@@ -160,11 +163,8 @@ export default function MonitorPage() {
     <main className="app">
       <header className="hero">
         <div>
-          <p className="eyebrow">SeaPay Monitor</p>
-          <h1>Transaction Monitor</h1>
-          <p className="lede">
-            Recieve Payments with Ease
-          </p>
+          <p className="eyebrow">SeaPay</p>
+          <h1>Receive Payments</h1>
           <Link href="/" className="tx-link hero-link">
             View all activity
           </Link>
@@ -176,7 +176,7 @@ export default function MonitorPage() {
       </header>
 
       <section className="panel">
-        <div className="status" role="status" aria-live="polite">
+        {/* <div className="status" role="status" aria-live="polite">
           <div className="status-row">
             <span className="status-label">Status</span>
             <span>{getStatusText()}</span>
@@ -189,7 +189,7 @@ export default function MonitorPage() {
             <span className="status-label">Matches</span>
             <span>{activities.length}</span>
           </div>
-        </div>
+        </div> */}
 
         <form onSubmit={handleStartMonitoring} className="form-grid">
           <div className="form-item">
@@ -229,6 +229,24 @@ export default function MonitorPage() {
             </p>
           </div>
 
+          <div className="form-item">
+            <label htmlFor="assetType" className="form-label">
+              Asset Type
+            </label>
+            <select
+              id="assetType"
+              value={assetType}
+              onChange={(e) => setAssetType(e.target.value)}
+              disabled={isMonitoring}
+              className="form-input"
+            >
+              <option value="ETH">ETH</option>
+              <option value="USDC">USDC</option>
+              <option value="USDT">USDT</option>
+            </select>
+            <p className="form-help">Choose the asset to monitor</p>
+          </div>
+
           <div className="actions">
             {!isMonitoring ? (
               <button type="submit" disabled={isLoading} id="startBtn">
@@ -262,7 +280,7 @@ export default function MonitorPage() {
               <span className="status-label">Monitoring</span>
               <span className="status-message">
                 Address {filterConfig.address} for transactions of exactly{" "}
-                {filterConfig.amount}
+                {filterConfig.amount} {assetType}
               </span>
             </div>
           </div>
@@ -336,8 +354,8 @@ export default function MonitorPage() {
               </h3>
               {hasMatch && lastSender && (
                 <div className="modal-wallet">
-                  <span className="tx-label">Sending wallet</span>
-                  <span className="tx-value">{lastSender}</span>
+                  <span className="tx-value text-sm">Amount: {amount} {assetType}</span>
+                  <span className="tx-label">From: {lastSender}</span>
                 </div>
               )}
             </div>

@@ -338,7 +338,7 @@ h1 {
   display: grid;
   gap: 12px;
   text-align: center;
-  min-height: 260px;
+  min-height: 320px;
   align-content: center;
 }
 
