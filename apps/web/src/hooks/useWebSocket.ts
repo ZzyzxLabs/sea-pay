@@ -52,7 +52,7 @@ export function useWebSocket() {
 
   useEffect(() => {
     // Create socket connection
-    const socketInstance = io("http://localhost:3000", {
+    const socketInstance = io("http://localhost:3001", {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,

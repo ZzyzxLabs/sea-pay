@@ -250,7 +250,7 @@ export default function MonitorPage() {
           <div className="actions">
             {!isMonitoring ? (
               <button type="submit" disabled={isLoading} id="startBtn">
-                {isLoading ? "Starting..." : "Start Monitoring"}
+                {isLoading ? "Generating..." : "Generate QR Code"}
               </button>
             ) : (
               <button
