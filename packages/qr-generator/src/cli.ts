@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
-import { buildErc681Request } from "./erc681.js";
-import { generateQr } from "./qr.js";
+import { buildErc681Request } from "./erc681";
+import { generateQr } from "./qr";
 
 type ArgMap = Record<string, string | boolean>;
 

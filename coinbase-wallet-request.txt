@@ -1,0 +1,190 @@
+# Getting Ethereum Accounts
+
+This page explains how to fetch accounts from a Web3 provider.
+
+## Getting Ethereum accounts with EIP-1102
+
+Use <a href="https://eips.ethereum.org/EIPS/eip-1102" target="_blank" rel="noreferrer noopener">EIP-1102</a> to obtain authorization and get Ethereum accounts. Invoking EIP-1102 shows a QR code dialog if the user's mobile wallet is not already connected to your app.
+
+The following code runs in response to a user-initiated action such as clicking a button to ensure the pop up is not blocked by the browser.
+
+```typescript lines wrap theme={null}
+// Use eth_requestAccounts
+ethereum.request({ method: "eth_requestAccounts" }).then((response) => {
+  const accounts: string[] = response as string[];
+  console.log(`User's address is ${accounts[0]}`);
+
+  // Optionally, have the default account set for web3.js
+  web3.eth.defaultAccount = accounts[0];
+});
+
+// ethereum.enable() is now deprecated in 4.0.0
+ethereum.enable().then((accounts: string[]) => {
+  console.log(`User's address is ${accounts[0]}`);
+  web3.eth.defaultAccount = accounts[0];
+});
+```
+
+Once the user obtains authorization, the Web3 object (`web3`) and the Web3 Provider (`ethereum`) are ready to be used.
+
+<Info>
+  If you were using `ethereum.on("accountsChanged")`, remove it and obtain addresses with EIP-1102 callbacks instead. It was removed to improve compatibility with the latest `web3.js`.
+</Info>
+
+**Next steps:**
+
+* [Switching or Adding EVM Chains](/coinbase-wallet/coinbase-wallet-sdk/making-requests/switching-or-adding-evm-chains)
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.cdp.coinbase.com/llms.txt
+
+# Switching or Adding EVM Chains
+
+This page explains how to configure your app so that it connects to supported networks, which include all EVM-compatible L1/L2 networks.
+
+## Switching or adding alternative EVM-compatible chains
+
+Coinbase Wallet SDK and Coinbase Wallet clients support both <a href="https://eips.ethereum.org/EIPS/eip-3326" target="_blank" rel="noreferrer noopener">EIP-3326</a> `wallet_switchEthereumChain` and <a href="https://eips.ethereum.org/EIPS/eip-3085" target="_blank" rel="noreferrer noopener">EIP-3085</a> `wallet_addEthereumChain` requests for switching networks.
+
+For apps supporting multiple networks, Coinbase Wallet SDK only needs 1 rpcUrl -- the rpcUrl of the chain the app wishes to default users to.
+
+If Wallet SDK receives either a `wallet_switchEthereumChain` or `wallet_addEthereumChain` request for a [whitelisted network](/coinbase-wallet/introduction/whitelisted-networks) then it switches the user to that network after asking approval from the user.
+
+Coinbase Wallet clients handle `wallet_addEthereumChain` requests for non-whitelisted networks (for example, a network such as `Harmony One` which is not currently supported by clients by default).
+
+An app can determine if a network is whitelisted or not by sending a `wallet_switchEthereumChain` request for that network. If error code 4092 is returned, then the network is not supported by default by the client wallet.
+
+### Example
+
+Here's how to request the wallet switch networks:
+
+```typescript lines wrap theme={null}
+ethereum
+  .request({
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId: "0xA86A" }],
+  })
+  .then((response) => console.log(response));
+```
+
+Here's how to request the client wallet add a new network
+
+```typescript lines wrap theme={null}
+ethereum
+  .request({
+    method: "wallet_addEthereumChain",
+    params: [
+      {
+        chainId: "0x63564C40",
+        rpcUrls: ["https://api.harmony.one"],
+        chainName: "Harmony Mainnet",
+        nativeCurrency: { name: "ONE", decimals: 18, symbol: "ONE" },
+        blockExplorerUrls: ["https://explorer.harmony.one"],
+        iconUrls: ["https://harmonynews.one/wp-content/uploads/2019/11/slfdjs.png"],
+      },
+    ],
+  })
+  .then((response) => console.log(response));
+```
+
+Many apps attempt to switch to a network with `wallet_switchEthereumChain`, determine if the network is supported by the wallet based on the error code, and follow with a `wallet_addEthereumChain` request if the network is not supported. Here's an example:
+
+```typescript lines wrap theme={null}
+try {
+  // attempt to switch to Harmony One network
+  const result = await ethereum.send("wallet_switchEthereumChain", [{ chainId: `0x63564C40` }]);
+} catch (switchError) {
+  // 4902 indicates that the client does not recognize the Harmony One network
+  if (switchError.code === 4902) {
+    await ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: "0x63564C40",
+          rpcUrls: ["https://api.harmony.one"],
+          chainName: "Harmony Mainnet",
+          nativeCurrency: { name: "ONE", decimals: 18, symbol: "ONE" },
+          blockExplorerUrls: ["https://explorer.harmony.one"],
+          iconUrls: ["https://harmonynews.one/wp-content/uploads/2019/11/slfdjs.png"],
+        },
+      ],
+    });
+  }
+}
+```
+
+**Next steps:**
+
+* [Getting Ethereum Accounts](/coinbase-wallet/coinbase-wallet-sdk/making-requests/getting-ethereum-accounts)
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.cdp.coinbase.com/llms.txt
+
+# Acquiring and Tracking Assets with EIP-747
+
+A major use case of Ethereum wallets is to acquire and track assets. This is often done by pre-loading a list of approved assets, which is insecure, or by stepping through a tedious process of adding each asset.
+
+The RPC method `wallet_watchAsset` allows users to easily track new assets with a suggestion from the sites they visit.
+
+## Calling wallet\_watchAsset
+
+Calling `wallet_watchAsset` method returns true/false if the asset is accepted/denied by the user, or an error if there is something wrong with the request.
+
+Unlike other methods, the default definition of `wallet_watchAsset` params is not an array, but to keep it compatible with code conventions of other apps, wallet-sdk supports both array and object format.
+
+```typescript lines wrap theme={null}
+interface WatchAssetParameters {
+  type: string; // The asset's interface, e.g. 'ERC20'
+  options: {
+    address: string; // The hexadecimal Ethereum address of the token contract
+    symbol?: string; // A ticker symbol or shorthand, up to 5 alphanumerical characters
+    decimals?: number; // The number of asset decimals
+    image?: string; // A string url of the token logo
+  };
+}
+```
+
+Here's an example of how to suggest the client wallet add a custom token:
+
+```typescript lines wrap theme={null}
+function onApproveWatchAsset() {
+  // your approval callback implementation
+}
+
+function onDenyWatchAsset() {
+  // your denying callback implementation
+}
+
+function onError(message: string) {
+  // your error callback implementation
+}
+
+// Use wallet_watchAsset
+ethereum
+  .request({
+    method: "wallet_watchAsset",
+    params: {
+      type: "ERC20",
+      options: {
+        address: "0xcf664087a5bb0237a0bad6742852ec6c8d69a27a",
+        symbol: "WONE",
+        decimals: 18,
+        image: "https://s2.coinmarketcap.com/static/img/coins/64x64/11696.png",
+      },
+    },
+  })
+  .then((response) => {
+    const result: boolean = response as boolean;
+    result ? onApproveWatchAsset() : onDenyWatchAsset();
+  })
+  .catch((err) => onError(err.message));
+```
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.cdp.coinbase.com/llms.txt

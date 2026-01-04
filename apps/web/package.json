@@ -9,12 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@coinbase/wallet-sdk": "^4.0.0",
     "@lottiefiles/dotlottie-react": "^0.17.12",
     "lottie-react": "^2.4.1",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "web3": "^1.7.0",
+    "@seapay/qr-generator": "workspace:^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -24,7 +27,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "@seapay/qr-generator": "workspace:^0.0.1"
+    "typescript": "^5"
   }
 }

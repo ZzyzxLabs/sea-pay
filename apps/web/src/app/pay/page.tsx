@@ -1,0 +1,247 @@
+"use client";
+
+import { useCallback, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { getCoinbaseWalletSDK } from "@/wallet/coinbase";
+import Web3 from "web3";
+
+type WalletStatus = "idle" | "connecting" | "connected" | "error";
+
+type Eip1193Provider = {
+  request: (args: {
+    method: string;
+    params?: unknown[] | Record<string, unknown>;
+  }) => Promise<unknown>;
+  disconnect?: () => void | Promise<void>;
+  close?: () => void | Promise<void>;
+};
+
+const DEFAULT_CHAIN_ID = 1;
+
+const parsedChainId = Number(process.env.NEXT_PUBLIC_COINBASE_CHAIN_ID);
+const chainId =
+  Number.isFinite(parsedChainId) && parsedChainId > 0
+    ? parsedChainId
+    : DEFAULT_CHAIN_ID;
+
+const getNetworkLabel = (id: number) => {
+  if (id === 1) {
+    return "Ethereum Mainnet";
+  }
+  if (id === 8453) {
+    return "Base Mainnet";
+  }
+  if (id === 84532) {
+    return "Base Sepolia";
+  }
+  if (id === 11155111) {
+    return "Ethereum Sepolia";
+  }
+  return `Chain ${id}`;
+};
+
+export default function PayPage() {
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<WalletStatus>("idle");
+  const [address, setAddress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activeChainId, setActiveChainId] = useState(chainId);
+  const providerRef = useRef<Eip1193Provider | null>(null);
+  const web3Ref = useRef<Web3 | null>(null);
+  const paymentInfo = useMemo(() => {
+    const payAddress = searchParams.get("address")?.trim() || null;
+    const payAmount = searchParams.get("amount")?.trim() || null;
+    const payAsset = searchParams.get("asset")?.trim() || null;
+    const payUri = searchParams.get("uri")?.trim() || null;
+
+    return {
+      address: payAddress,
+      amount: payAmount,
+      asset: payAsset,
+      uri: payUri,
+    };
+  }, [searchParams]);
+
+  const getProvider = () => {
+    if (!providerRef.current) {
+      const sdk = getCoinbaseWalletSDK();
+      if (!sdk) {
+        throw new Error("Coinbase Wallet SDK is only available in the browser.");
+      }
+      providerRef.current = sdk.getProvider() as Eip1193Provider;
+    }
+    return providerRef.current;
+  };
+
+  const connectWallet = useCallback(async () => {
+    setStatus("connecting");
+    setError(null);
+
+    try {
+      const provider = getProvider();
+
+      if (!web3Ref.current) {
+        web3Ref.current = new Web3(provider as any);
+      }
+
+      const response = await provider.request({
+        method: "eth_requestAccounts",
+      });
+      const accounts = response as string[];
+      const primary = accounts?.[0];
+
+      if (!primary) {
+        throw new Error("No accounts returned from Coinbase Wallet.");
+      }
+
+      web3Ref.current.eth.defaultAccount = primary;
+      setAddress(primary);
+
+      const chainResponse = await provider.request({ method: "eth_chainId" });
+      if (typeof chainResponse === "string") {
+        const parsed = Number.parseInt(chainResponse, 16);
+        if (Number.isFinite(parsed)) {
+          setActiveChainId(parsed);
+        }
+      }
+
+      setStatus("connected");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to connect to Coinbase Wallet.";
+      setError(message);
+      setStatus("error");
+    }
+  }, []);
+
+  const disconnectWallet = useCallback(async () => {
+    const provider = getProvider();
+    if (provider.disconnect) {
+      await provider.disconnect();
+    }
+    setAddress(null);
+    setActiveChainId(chainId);
+    setStatus("idle");
+    setError(null);
+  }, []);
+
+  const statusLabel = (() => {
+    switch (status) {
+      case "connecting":
+        return "Connecting";
+      case "connected":
+        return "Connected";
+      case "error":
+        return "Error";
+      default:
+        return "Not connected";
+    }
+  })();
+
+  const statusClass =
+    status === "connected"
+      ? "status-success"
+      : status === "error"
+        ? "status-error"
+        : "";
+
+  return (
+    <main className="app">
+      <header className="hero">
+        <div>
+          <p className="eyebrow">SeaPay</p>
+          <h1>Pay with Coinbase Wallet</h1>
+          <p className="lede">
+            Connect your Coinbase Wallet to authorize a payment in seconds.
+          </p>
+          <Link href="/" className="tx-link hero-link">
+            Back to activity
+          </Link>
+        </div>
+        <div className="hero-badge">
+          <span className="pulse" />
+          <span>{statusLabel}</span>
+        </div>
+      </header>
+
+      <section className="panel">
+        <div className="status" role="status" aria-live="polite">
+          <div className="status-row">
+            <span className="status-label">Payment address</span>
+            <span className="tx-value">
+              {paymentInfo.address ?? "Not provided"}
+            </span>
+          </div>
+          <div className="status-row">
+            <span className="status-label">Amount</span>
+            <span>
+              {paymentInfo.amount ?? "Not provided"}{" "}
+              {paymentInfo.asset ?? ""}
+            </span>
+          </div>
+          {/* <div className="status-row">
+            <span className="status-label">Request URI</span>
+            <span className="tx-value">
+              {paymentInfo.uri ?? "Not provided"}
+            </span>
+          </div> */}
+        </div>
+
+        <div className={`status ${statusClass}`} role="status" aria-live="polite">
+          <div className="status-row">
+            <span className="status-label">Connection</span>
+            <span>{statusLabel}</span>
+          </div>
+          <div className="status-row">
+            <span className="status-label">Account</span>
+            <span className="tx-value">{address ?? "Not connected"}</span>
+          </div>
+          <div className="status-row">
+            <span className="status-label">Network</span>
+            <span>
+              {getNetworkLabel(activeChainId)} ({activeChainId})
+            </span>
+          </div>
+        </div>
+
+        {error ? (
+          <div className="status status-error" role="status" aria-live="polite">
+            <div className="status-row status-row-stack">
+              <span className="status-label">Error</span>
+              <span className="status-message">{error}</span>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="actions">
+          <button
+            type="button"
+            onClick={connectWallet}
+            disabled={status === "connecting" || status === "connected"}
+            id="startBtn"
+          >
+            {status === "connecting"
+              ? "Connecting..."
+              : "Connect Coinbase Wallet"}
+          </button>
+          <button
+            type="button"
+            onClick={disconnectWallet}
+            disabled={status !== "connected"}
+            className="secondary"
+          >
+            Disconnect
+          </button>
+        </div>
+
+        <p className="form-help">
+          Connecting will open Coinbase Wallet or show a QR code on supported
+          devices.
+        </p>
+      </section>
+    </main>
+  );
+}

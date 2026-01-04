@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useFilteredWebSocket } from "@/hooks/useFilteredWebSocket";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 export default function MonitorPage() {
@@ -17,6 +18,8 @@ export default function MonitorPage() {
   );
   const [lastSender, setLastSender] = useState<string | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [qrSvg, setQrSvg] = useState<string | null>(null);
+  const [qrUri, setQrUri] = useState<string | null>(null);
   const [filterConfig, setFilterConfig] = useState<{
     address: string;
     amount: number;
@@ -24,6 +27,7 @@ export default function MonitorPage() {
   } | null>(null);
 
   const { status, activities } = useFilteredWebSocket(filterConfig);
+  const router = useRouter();
 
   const handleStartMonitoring = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +45,42 @@ export default function MonitorPage() {
 
     setIsLoading(true);
     setError(null);
+    setMatchPhase("loading");
+    setLastSender(null);
+    setIsPopupOpen(true);
+    setQrSvg(null);
+    setQrUri(null);
+
+    try {
+      const qrResponse = await fetch("/api/qr", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          address: walletAddress.trim(),
+        }),
+      });
+
+      const qrData = await qrResponse.json();
+
+      if (!qrResponse.ok) {
+        throw new Error(qrData.error || "Failed to generate QR code");
+      }
+      console.log("QR code generated:", qrData.uri);
+      setQrSvg(qrData.svg);
+      setQrUri(qrData.uri);
+    } catch (err) {
+      console.error("Error generating QR code:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to generate QR code"
+      );
+      setIsPopupOpen(false);
+      setMatchPhase("idle");
+      setIsLoading(false);
+      setQrUri(null);
+      return;
+    }
 
     try {
       // Add wallet address to Alchemy webhook
@@ -70,9 +110,6 @@ export default function MonitorPage() {
         asset: assetType || "USDC",
       });
       setIsMonitoring(true);
-      setMatchPhase("loading");
-      setLastSender(null);
-      setIsPopupOpen(true);
     } catch (err) {
       console.error("Error adding address to webhook:", err);
       setError(
@@ -115,6 +152,8 @@ export default function MonitorPage() {
       setIsMonitoring(false);
       setMatchPhase("idle");
       setIsPopupOpen(false);
+      setQrSvg(null);
+      setQrUri(null);
     } catch (err) {
       console.error("Error removing address from webhook:", err);
       setError(
@@ -123,6 +162,29 @@ export default function MonitorPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const buildPayUrl = () => {
+    const params = new URLSearchParams();
+    const trimmedAddress = walletAddress.trim();
+    const trimmedAmount = amount.trim();
+    const trimmedAsset = assetType.trim();
+
+    if (trimmedAddress) {
+      params.set("address", trimmedAddress);
+    }
+    if (trimmedAmount) {
+      params.set("amount", trimmedAmount);
+    }
+    if (trimmedAsset) {
+      params.set("asset", trimmedAsset);
+    }
+    if (qrUri) {
+      params.set("uri", qrUri);
+    }
+
+    const query = params.toString();
+    return query ? `/pay?${query}` : "/pay";
   };
 
   const getStatusText = () => {
@@ -138,12 +200,6 @@ export default function MonitorPage() {
 
   const hasMatch = matchPhase === "success";
 
-  const resultsHint = isMonitoring
-    ? hasMatch
-      ? "Match received"
-      : "Waiting for matching transactions"
-    : 'Fill in the form above and click "Start Monitoring" to begin';
-
   useEffect(() => {
     if (activities.length > 0) {
       setMatchPhase("success");
@@ -156,6 +212,8 @@ export default function MonitorPage() {
       setMatchPhase("idle");
       setLastSender(null);
       setIsPopupOpen(false);
+      setQrSvg(null);
+      setQrUri(null);
     }
   }, [isMonitoring]);
 
@@ -319,7 +377,7 @@ export default function MonitorPage() {
         </div>
       </section> */}
 
-      {isMonitoring && isPopupOpen && (
+      {isPopupOpen && (
         <div className="modal-backdrop" role="status" aria-live="polite">
           <div className="modal-card">
             <button
@@ -331,6 +389,18 @@ export default function MonitorPage() {
               x
             </button>
             <div className="modal-body">
+              {qrSvg ? (
+                <div
+                  className="modal-qr"
+                  role="img"
+                  aria-label="Payment QR code"
+                  dangerouslySetInnerHTML={{ __html: qrSvg }}
+                />
+              ) : (
+                <div className="modal-qr modal-qr-loading">
+                  <span className="muted small">Generating QR code...</span>
+                </div>
+              )}
               {hasMatch ? (
                 <DotLottieReact
                   key="success"
@@ -356,6 +426,17 @@ export default function MonitorPage() {
                 <div className="modal-wallet">
                   <span className="tx-value text-sm">Amount: {amount} {assetType}</span>
                   <span className="tx-label">From: {lastSender}</span>
+                </div>
+              )}
+              {!hasMatch && qrSvg && (
+                <div className="actions">
+                  <button
+                    type="button"
+                    onClick={() => router.push(buildPayUrl())}
+                    className="secondary"
+                  >
+                    Open payment page
+                  </button>
                 </div>
               )}
             </div>

@@ -35,12 +35,6 @@ export async function PATCH(request: NextRequest) {
         addresses_to_remove: addressesToRemove || [],
       }),
     };
-    
-    console.log("Sending PATCH request to Alchemy:", {
-      webhook_id: webhookId,
-      addresses_to_add: addressesToAdd,
-      addresses_to_remove: addressesToRemove,
-    });
 
     const response = await fetch(url, options);
     const data = await response.json();

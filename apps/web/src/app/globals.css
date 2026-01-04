@@ -342,6 +342,27 @@ h1 {
   align-content: center;
 }
 
+.modal-qr {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.modal-qr svg {
+  width: 100%;
+  height: 100%;
+}
+
+.modal-qr-loading {
+  background: rgba(26, 26, 26, 0.04);
+}
+
 .modal-close {
   position: absolute;
   top: 12px;
