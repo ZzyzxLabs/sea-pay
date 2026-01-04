@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getCoinbaseWalletSDK } from "@/wallet/coinbase";
@@ -13,6 +13,8 @@ type Eip1193Provider = {
     method: string;
     params?: unknown[] | Record<string, unknown>;
   }) => Promise<unknown>;
+  on?: (event: string, handler: (...args: any[]) => void) => void;
+  removeListener?: (event: string, handler: (...args: any[]) => void) => void;
   disconnect?: () => void | Promise<void>;
   close?: () => void | Promise<void>;
 };
@@ -49,6 +51,7 @@ export default function PayPage() {
   const [activeChainId, setActiveChainId] = useState(chainId);
   const providerRef = useRef<Eip1193Provider | null>(null);
   const web3Ref = useRef<Web3 | null>(null);
+  const listenersAttachedRef = useRef(false);
   const paymentInfo = useMemo(() => {
     const payAddress = searchParams.get("address")?.trim() || null;
     const payAmount = searchParams.get("amount")?.trim() || null;
@@ -73,6 +76,40 @@ export default function PayPage() {
     }
     return providerRef.current;
   };
+
+  const handleAccountsChanged = useCallback((accounts: string[]) => {
+    const primary = accounts?.[0] ?? null;
+    setAddress(primary);
+
+    if (primary) {
+      if (web3Ref.current) {
+        web3Ref.current.eth.defaultAccount = primary;
+      }
+      setStatus("connected");
+      setError(null);
+    } else {
+      setStatus("idle");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status !== "connected") {
+      return;
+    }
+
+    const provider = providerRef.current;
+    if (!provider?.on || listenersAttachedRef.current) {
+      return;
+    }
+
+    provider.on("accountsChanged", handleAccountsChanged);
+    listenersAttachedRef.current = true;
+
+    return () => {
+      provider.removeListener?.("accountsChanged", handleAccountsChanged);
+      listenersAttachedRef.current = false;
+    };
+  }, [handleAccountsChanged, status]);
 
   const connectWallet = useCallback(async () => {
     setStatus("connecting");
