@@ -1,9 +1,9 @@
 {
-  "name": "frontendv2",
+  "name": "@seapay/app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -24,6 +24,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@seapay/qr-generator": "workspace:^0.0.1"
   }
 }

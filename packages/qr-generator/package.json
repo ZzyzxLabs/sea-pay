@@ -1,0 +1,28 @@
+{
+  "name": "@seapay/qr-generator",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "files": ["dist"],
+  "main": "dist/index.js",
+  "bin": {
+    "seapay-qr": "bin/seapay-qr.js"
+  },
+  "scripts": {
+    "qr": "node bin/seapay-qr.js",
+    "dev": "tsx src/cli.ts --help",
+    "build": "tsc",
+    "start": "node dist/cli.js --help",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.27",
+    "@types/qrcode": "^1.5.5",
+    "typescript": "^5.9.3"
+  }
+}
