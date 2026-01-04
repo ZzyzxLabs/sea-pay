@@ -1,0 +1,22 @@
+{
+  "name": "@seapay/erc3009-relay",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "node --enable-source-maps dist/server.js",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@seapay-ai/erc3009": "workspace:*",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.16.0",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.0"
+  }
+}
