@@ -66,7 +66,7 @@ export default function PayPage() {
     };
   }, [searchParams]);
 
-  const getProvider = () => {
+  const getProvider = useCallback(() => {
     if (!providerRef.current) {
       const sdk = getCoinbaseWalletSDK();
       if (!sdk) {
@@ -75,7 +75,7 @@ export default function PayPage() {
       providerRef.current = sdk.getProvider() as Eip1193Provider;
     }
     return providerRef.current;
-  };
+  }, []);
 
   const handleAccountsChanged = useCallback((accounts: string[]) => {
     const primary = accounts?.[0] ?? null;
@@ -92,6 +92,13 @@ export default function PayPage() {
     }
   }, []);
 
+  const handleChainChanged = useCallback((nextChainId: string) => {
+    const parsed = Number.parseInt(nextChainId, 10);
+    if (Number.isFinite(parsed)) {
+      setActiveChainId(parsed);
+    }
+  }, []);
+
   useEffect(() => {
     if (status !== "connected") {
       return;
@@ -103,13 +110,15 @@ export default function PayPage() {
     }
 
     provider.on("accountsChanged", handleAccountsChanged);
+    provider.on("chainChanged", handleChainChanged);
     listenersAttachedRef.current = true;
 
     return () => {
       provider.removeListener?.("accountsChanged", handleAccountsChanged);
+      provider.removeListener?.("chainChanged", handleChainChanged);
       listenersAttachedRef.current = false;
     };
-  }, [handleAccountsChanged, status]);
+  }, [handleAccountsChanged, handleChainChanged, status]);
 
   const connectWallet = useCallback(async () => {
     setStatus("connecting");
@@ -152,7 +161,44 @@ export default function PayPage() {
       setError(message);
       setStatus("error");
     }
-  }, []);
+  }, [getProvider]);
+
+  const restoreConnection = useCallback(async () => {
+    try {
+      const provider = getProvider();
+
+      if (!web3Ref.current) {
+        web3Ref.current = new Web3(provider as any);
+      }
+
+      const response = await provider.request({ method: "eth_accounts" });
+      const accounts = response as string[];
+      const primary = accounts?.[0];
+
+      if (!primary) {
+        return;
+      }
+
+      web3Ref.current.eth.defaultAccount = primary;
+      setAddress(primary);
+      setStatus("connected");
+      setError(null);
+
+      const chainResponse = await provider.request({ method: "eth_chainId" });
+      if (typeof chainResponse === "string") {
+        const parsed = Number.parseInt(chainResponse, 16);
+        if (Number.isFinite(parsed)) {
+          setActiveChainId(parsed);
+        }
+      }
+    } catch {
+      // Ignore restore errors and let the user connect manually.
+    }
+  }, [getProvider]);
+
+  useEffect(() => {
+    restoreConnection();
+  }, [restoreConnection]);
 
   const disconnectWallet = useCallback(async () => {
     const provider = getProvider();
@@ -163,7 +209,7 @@ export default function PayPage() {
     setActiveChainId(chainId);
     setStatus("idle");
     setError(null);
-  }, []);
+  }, [getProvider]);
 
   const statusLabel = (() => {
     switch (status) {
@@ -234,12 +280,18 @@ export default function PayPage() {
           </div>
           <div className="status-row">
             <span className="status-label">Account</span>
-            <span className="tx-value">{address ?? "Not connected"}</span>
+            <span>
+              {status === "connected"
+                ? `${address}`
+                : "Not connected"}
+            </span>
           </div>
           <div className="status-row">
             <span className="status-label">Network</span>
             <span>
-              {getNetworkLabel(activeChainId)} ({activeChainId})
+              {status === "connected"
+                ? `${getNetworkLabel(activeChainId)} (${activeChainId})`
+                : "Not connected"}
             </span>
           </div>
         </div>
