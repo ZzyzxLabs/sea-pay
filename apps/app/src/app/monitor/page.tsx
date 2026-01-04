@@ -23,6 +23,31 @@ export default function MonitorPage() {
     asset: string;
   } | null>(null);
 
+  const paymentLink = (() => {
+    if (!filterConfig) {
+      return "/pay";
+    }
+    const params = new URLSearchParams();
+    if (filterConfig.address) {
+      params.set("address", filterConfig.address);
+    }
+    if (amount) {
+      params.set("amount", amount);
+    } else if (Number.isFinite(filterConfig.amount)) {
+      params.set("amount", String(filterConfig.amount));
+    }
+    if (filterConfig.asset) {
+      params.set("asset", filterConfig.asset);
+    } else if (assetType) {
+      params.set("asset", assetType);
+    }
+    if (lastSender) {
+      params.set("sender", lastSender);
+    }
+    const query = params.toString();
+    return query ? `/pay?${query}` : "/pay";
+  })();
+
   const { status, activities } = useFilteredWebSocket(filterConfig);
 
   const handleStartMonitoring = async (e: React.FormEvent) => {
@@ -348,16 +373,29 @@ export default function MonitorPage() {
                   className="modal-lottie"
                 />
               )}
-              
+
               <h3 className="modal-title">
                 {hasMatch ? "Payment received" : "Waiting for payment..."}
               </h3>
-              {hasMatch && lastSender && (
+              {filterConfig && (
                 <div className="modal-wallet">
-                  <span className="tx-value text-sm">Amount: {amount} {assetType}</span>
-                  <span className="tx-label">From: {lastSender}</span>
+                  <span className="tx-label">To</span>
+                  <span className="tx-value">{filterConfig.address}</span>
+                  <span className="tx-label">Amount</span>
+                  <span className="tx-value">
+                    {amount || filterConfig.amount} {assetType}
+                  </span>
+                  {lastSender && (
+                    <>
+                      <span className="tx-label">From</span>
+                      <span className="tx-value">{lastSender}</span>
+                    </>
+                  )}
                 </div>
               )}
+              <Link href={paymentLink} className="tx-link">
+                Open payment page
+              </Link>
             </div>
           </div>
         </div>
