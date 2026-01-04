@@ -85,7 +85,7 @@ export function ActivityFeed() {
               <span className="status-label">Error</span>
               <span>
                 Failed to connect to webhook server. Make sure the server is
-                running on port 3000.
+                running on port 3001.
               </span>
             </div>
           </div>
@@ -104,7 +104,7 @@ export function ActivityFeed() {
               <p className="muted">Waiting for webhook events to arrive...</p>
               {status === "connected" && (
                 <p className="muted small">
-                  Send a POST request to http://localhost:3000/webhook to test
+                  Send a POST request to http://localhost:3001/webhook to test
                 </p>
               )}
             </div>
