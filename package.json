@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "packageManager": "pnpm@10.26.2",
+  "devDependencies": {
+    "next": "16.1.1"
+  },
   "scripts": {
     "dev": "pnpm -r --parallel --filter @seapay/app --filter @seapay/webhook --filter @seapay/web dev",
     "build": "pnpm -r build",
