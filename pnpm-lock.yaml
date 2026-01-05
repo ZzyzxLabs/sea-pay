@@ -19,9 +19,6 @@ importers:
       '@seapay/deeplink':
         specifier: workspace:^0.0.1
         version: link:../../packages/deeplink
-      '@seapay/qr-generator':
-        specifier: workspace:^0.0.1
-        version: link:../../tooling/qr-generator
       lottie-react:
         specifier: ^2.4.1
         version: 2.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
