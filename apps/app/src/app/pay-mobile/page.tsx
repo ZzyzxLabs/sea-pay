@@ -4,6 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Web3 from "web3";
 import { getCoinbaseWalletSDK } from "@/wallet/coinbase";
+import {
+  buildTypedData,
+  message_5_minutes,
+  TRANSFER_WITH_AUTHORIZATION_TYPE,
+  USDC_Domain,
+} from "@seapay-ai/erc3009";
 
 type WalletStatus = "idle" | "connecting" | "connected" | "error";
 
@@ -26,6 +32,17 @@ const chainId =
     ? parsedChainId
     : DEFAULT_CHAIN_ID;
 
+const EIP712_DOMAIN_TYPES = [
+  { name: "name", type: "string" },
+  { name: "version", type: "string" },
+  { name: "chainId", type: "uint256" },
+  { name: "verifyingContract", type: "address" },
+];
+
+const DEFAULT_USDC_RECIPIENT =
+  "0x0000000000000000000000000000000000000000";
+const DEFAULT_USDC_AMOUNT = BigInt("1000000");
+
 const getNetworkLabel = (id: number) => {
   if (id === 1) {
     return "Ethereum Mainnet";
@@ -47,6 +64,9 @@ export default function PayMobilePage() {
   const [address, setAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeChainId, setActiveChainId] = useState(chainId);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
+  const [isSigning, setIsSigning] = useState(false);
   const providerRef = useRef<Eip1193Provider | null>(null);
   const web3Ref = useRef<Web3 | null>(null);
   const listenersAttachedRef = useRef(false);
@@ -61,6 +81,68 @@ export default function PayMobilePage() {
     }
     return providerRef.current;
   }, []);
+
+  const signUSDCTransferWithAuthorization = useCallback(
+    async (to: string, value: bigint) => {
+      const provider = getProvider();
+      const walletAddress = address ?? web3Ref.current?.eth.defaultAccount;
+
+      if (typeof walletAddress !== "string") {
+        throw new Error("Wallet is not connected.");
+      }
+
+      const domain = USDC_Domain();
+      const message = message_5_minutes(walletAddress, to, value);
+      const typedData = buildTypedData({ domain, message });
+
+      const payload = {
+        domain: typedData.domain,
+        types: {
+          EIP712Domain: EIP712_DOMAIN_TYPES,
+          ...typedData.types,
+        },
+        primaryType: TRANSFER_WITH_AUTHORIZATION_TYPE,
+        message: {
+          ...typedData.message,
+          value: typedData.message.value.toString(),
+          validAfter: typedData.message.validAfter.toString(),
+          validBefore: typedData.message.validBefore.toString(),
+        },
+      };
+
+      const signature = await provider.request({
+        method: "eth_signTypedData_v4",
+        params: [walletAddress, JSON.stringify(payload)],
+      });
+
+      if (typeof signature !== "string") {
+        throw new Error("Unexpected signature response.");
+      }
+
+      return signature;
+    },
+    [address, getProvider]
+  );
+
+  const signTransfer = useCallback(async () => {
+    setIsSigning(true);
+    setSignatureError(null);
+
+    try {
+      const sig = await signUSDCTransferWithAuthorization(
+        DEFAULT_USDC_RECIPIENT,
+        DEFAULT_USDC_AMOUNT
+      );
+      setSignature(sig);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to sign transfer.";
+      setSignature(null);
+      setSignatureError(message);
+    } finally {
+      setIsSigning(false);
+    }
+  }, [signUSDCTransferWithAuthorization]);
 
   const handleAccountsChanged = useCallback((accounts: string[]) => {
     const primary = accounts?.[0] ?? null;
@@ -194,6 +276,8 @@ export default function PayMobilePage() {
     setActiveChainId(chainId);
     setStatus("idle");
     setError(null);
+    setSignature(null);
+    setSignatureError(null);
   }, [getProvider]);
 
   const statusLabel = (() => {
@@ -266,6 +350,24 @@ export default function PayMobilePage() {
           </div>
         ) : null}
 
+        {signatureError ? (
+          <div className="status status-error" role="status" aria-live="polite">
+            <div className="status-row status-row-stack">
+              <span className="status-label">Signature Error</span>
+              <span className="status-message">{signatureError}</span>
+            </div>
+          </div>
+        ) : null}
+
+        {signature ? (
+          <div className="status status-success" role="status" aria-live="polite">
+            <div className="status-row status-row-stack">
+              <span className="status-label">Signature</span>
+              <span className="tx-value">{signature}</span>
+            </div>
+          </div>
+        ) : null}
+
         <div className="actions">
           <button
             type="button"
@@ -283,6 +385,13 @@ export default function PayMobilePage() {
             className="secondary"
           >
             Disconnect
+          </button>
+          <button
+            type="button"
+            onClick={signTransfer}
+            disabled={status !== "connected" || isSigning}
+          >
+            {isSigning ? "Signing..." : "Sign USDC Transfer"}
           </button>
         </div>
 
