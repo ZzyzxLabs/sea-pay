@@ -31,6 +31,7 @@ export default async function QrTestPage() {
             <span className="tx-value">{deeplinkUrl}</span>
           </div>
         </div>
+
         <div
           className="modal-qr"
           role="img"
