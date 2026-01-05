@@ -1,6 +1,6 @@
-import express from "express";
-import { resolve } from "path";
-import { config as loadEnv } from "dotenv";
+import express, { type Request, type Response } from "express";
+import path from "path";
+import dotenv from "dotenv";
 import {
   JsonRpcProvider,
   Wallet,
@@ -10,10 +10,17 @@ import {
   TypedDataDomain,
 } from "ethers";
 
-// Load root-level .env (monorepo root two levels up from this package)
-loadEnv({ path: resolve(process.cwd(), "..", "..", ".env") });
-// Also load package-local .env if present
-loadEnv();
+console.log("cwd:", process.cwd());
+console.log("PORT:", process.env.PORT);
+
+// Load env from current working dir (root run) and monorepo root (when cwd is services/relayer)
+const envPaths = [
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(process.cwd(), "..", "..", ".env"),
+];
+for (const envPath of envPaths) {
+  dotenv.config({ path: envPath });
+}
 
 type Domain = {
   name: string;
@@ -59,7 +66,7 @@ function isAllowedToken(token: string): boolean {
   return allowlist.has(token.toLowerCase());
 }
 
-app.get("/api/tokenDomain", async (req, res) => {
+app.get("/api/tokenDomain", async (req: Request, res: Response) => {
   try {
     const token = String(req.query.token || "").toLowerCase();
     if (!token) return res.status(400).json({ error: "token required" });
@@ -97,7 +104,7 @@ app.get("/api/tokenDomain", async (req, res) => {
   }
 });
 
-app.post("/api/relay", async (req, res) => {
+app.post("/api/relay", async (req: Request, res: Response) => {
   try {
     const {
       token,
@@ -189,7 +196,7 @@ app.post("/api/relay", async (req, res) => {
   }
 });
 
-app.get("/status", (_req, res) => res.json({ ok: true }));
+app.get("/health", (_req: Request, res: Response) => res.json({ ok: true }));
 
 const port = parseInt(process.env.PORT || "3001", 10);
 app.listen(port, () => {
@@ -204,29 +211,6 @@ function parseAllowlist(raw?: string | null) {
       .map((v) => v.trim().toLowerCase())
       .filter(Boolean)
   );
-}
-
-async function fetchDomain(token: string): Promise<Domain> {
-  const erc20 = new Contract(token, ERC20_ABI, provider);
-  let name = "Token";
-  let version = "1";
-  try {
-    name = await erc20.name();
-  } catch {
-    /* ignore */
-  }
-  try {
-    version = await erc20.version();
-  } catch {
-    /* ignore */
-  }
-  const network = await provider.getNetwork();
-  return {
-    name,
-    version,
-    chainId: Number(network.chainId),
-    verifyingContract: token.toLowerCase(),
-  };
 }
 
 function requiredEnv(key: string): string {
