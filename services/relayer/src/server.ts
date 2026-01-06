@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from "express";
+import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
 import {
@@ -50,6 +51,30 @@ const ERC3009_ABI = [
 ];
 
 const app = express();
+
+// CORS configuration - must be before routes
+app.use(
+  cors({
+    origin: [
+      "https://seapay.ai",
+      "https://app.seapay.ai",
+      "https://sea-pay-app.vercel.app",
+      /^https:\/\/.*\.seapay\.ai$/,
+      "http://localhost:3000",
+      "http://localhost:3001",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Idempotency-Key",
+      "X-API-Key",
+    ],
+    credentials: false,
+  })
+);
+
+// JSON body parser - must be after CORS
 app.use(express.json());
 
 const provider = new JsonRpcProvider(requiredEnv("RPC_URL"));
