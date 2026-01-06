@@ -119,6 +119,8 @@ export default function PayMobilePage() {
         throw new Error("Unexpected signature response.");
       }
 
+      console.log("Generated signature:", signature);
+
       // Send the signed transfer to the relay API
       const relayResponse = await fetch("https://sea-pay.onrender.com/api/relay", {
         method: "POST",
@@ -142,7 +144,8 @@ export default function PayMobilePage() {
           },
         }),
       });
-
+      
+      console.log("Relay response status:", relayResponse.status);
       if (!relayResponse.ok) {
         const errorText = await relayResponse.text();
         throw new Error(`Relay API error: ${errorText}`);
