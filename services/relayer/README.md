@@ -23,8 +23,6 @@ RELAYER_PK=0xYourPrivateKey
 
 # Optional
 PORT=3001
-TOKEN_ALLOWLIST=0xToken1,0xToken2,0xToken3  # Comma-separated list of allowed token addresses
-API_KEY=your-secret-api-key-here  # API key for authentication (optional, disables auth if not set)
 ```
 
 See `env.example` for a template.
@@ -69,17 +67,7 @@ The service is configured with CORS to allow requests from:
 - `http://localhost:3000` (development)
 - `http://localhost:3001` (development)
 
-### API Key Authentication
-
-**Development Mode**: If `API_KEY` is not set in environment variables, authentication is disabled.
-
-**Production Mode**: Set `API_KEY` in your `.env` file. Clients must include the API key in the `X-API-Key` header:
-
-```bash
-curl -H "X-API-Key: your-api-key" http://localhost:3001/api/tokenDomain?token=0x...
-```
-
-**Note**: The `/health` endpoint is always public and does not require authentication.
+**Note**: Authentication is currently disabled. All endpoints are public.
 
 ## Testing the API
 
@@ -95,44 +83,13 @@ Expected response:
 { "ok": true }
 ```
 
-### 2. Get Token Domain
-
-Get the EIP-712 domain for a token:
-
-```bash
-# Without API key (if API_KEY not set)
-curl "http://localhost:3001/api/tokenDomain?token=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-
-# With API key (if API_KEY is set)
-curl -H "X-API-Key: your-api-key" \
-  "http://localhost:3001/api/tokenDomain?token=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-```
-
-Expected response:
-
-```json
-{
-  "name": "USD Coin",
-  "version": "2",
-  "chainId": 1,
-  "verifyingContract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-}
-```
-
-### 3. Relay a Transfer
+### 2. Relay a Transfer
 
 **Note:** This requires a properly signed ERC-3009 authorization. See the test script below for a complete example.
 
 ```bash
-# Without API key (if API_KEY not set)
-curl -X POST http://localhost:3001/api/relay \
+curl -X POST http://localhost:3001/base/relay \
   -H "Content-Type: application/json" \
-  -d '{
-
-# With API key (if API_KEY is set)
-curl -X POST http://localhost:3001/api/relay \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
   -d '{
     "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "from": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
@@ -166,7 +123,7 @@ Expected response:
 A complete test script is available at `test-relay.mjs`. It demonstrates:
 
 1. Health check
-2. Fetching the token domain
+2. Building the EIP-712 domain locally
 3. Creating a signed authorization
 4. Relaying the transaction
 
@@ -177,12 +134,25 @@ To use it:
 FROM_PK=0xYourPrivateKey \
 TO=0x8ba1f109551bD432803012645Hac136c22C3e0 \
 VALUE=1000000 \
+CHAIN_ID=1 \
+TOKEN_NAME="USD Coin" \
+TOKEN_VERSION="2" \
 pnpm --filter @seapay/relayer-service test
 
 # Or directly
 cd services/relayer
-FROM_PK=0xYourPrivateKey node test-relay.mjs
+FROM_PK=0xYourPrivateKey \
+CHAIN_ID=1 \
+TOKEN_NAME="USD Coin" \
+TOKEN_VERSION="2" \
+node test-relay.mjs
 ```
+
+**Note:** The test script builds the EIP-712 domain locally. You can override domain parameters via environment variables:
+
+- `CHAIN_ID` - Chain ID (default: 1 for Ethereum mainnet)
+- `TOKEN_NAME` - Token name (default: "Token")
+- `TOKEN_VERSION` - Token version (default: "1")
 
 ### Shell Test Script
 
@@ -232,11 +202,9 @@ All endpoints return errors in the following format:
 
 Common error messages:
 
-- `"token required"` - Missing token parameter
-- `"token not allowed"` - Token not in allowlist (if configured)
 - `"missing fields"` - Required fields missing in request
+- `"domain verifyingContract mismatch"` - Domain verifyingContract doesn't match token address
 - `"invalid signature"` - Signature verification failed
-- `"nonce already used"` - Nonce has been used before
 - `"authorization not in valid window"` - Current time outside validAfter/validBefore window
 - `"internal_error"` - Server error
 
@@ -281,10 +249,6 @@ PORT=3002 pnpm --filter @seapay/relayer-service dev
 
 The service will fail to start if `RPC_URL` or `RELAYER_PK` are missing. Check the console output for the error message.
 
-### Token Not Allowed
-
-If you've set `TOKEN_ALLOWLIST`, make sure the token address is included. Addresses are compared case-insensitively.
-
 ### CORS Errors
 
 If you're getting CORS errors from a browser:
@@ -292,14 +256,6 @@ If you're getting CORS errors from a browser:
 1. Check that your origin is in the allowed list (see CORS Configuration above)
 2. Verify the CORS middleware is loaded before routes
 3. Check browser console for the exact error message
-
-### Authentication Errors
-
-If you get `401 unauthorized`:
-
-1. Check that `API_KEY` is set in your environment
-2. Verify you're sending the `X-API-Key` header with the correct value
-3. Note: `/health` endpoint is always public and doesn't require authentication
 
 ### Testing CORS from Browser
 

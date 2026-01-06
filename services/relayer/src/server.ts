@@ -23,13 +23,6 @@ for (const envPath of envPaths) {
   dotenv.config({ path: envPath });
 }
 
-type Domain = {
-  name: string;
-  version: string;
-  chainId: number;
-  verifyingContract: string;
-};
-
 const TYPES = {
   TransferWithAuthorization: [
     { name: "from", type: "address" },
@@ -41,13 +34,8 @@ const TYPES = {
   ],
 };
 
-const ERC20_ABI = [
-  "function name() view returns (string)",
-  "function version() view returns (string)",
-];
-const ERC3009_ABI = [
-  "function DOMAIN_SEPARATOR() view returns (bytes32)",
-  "function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)",
+const USDC_ERC3009_ABI = [
+  "function transferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint8 v,bytes32 r,bytes32 s)",
 ];
 
 const app = express();
@@ -79,57 +67,8 @@ app.use(express.json());
 
 const provider = new JsonRpcProvider(requiredEnv("RPC_URL"));
 const relayer = new Wallet(requiredEnv("RELAYER_PK"), provider);
-const allowlist = parseAllowlist(process.env.TOKEN_ALLOWLIST);
-const usedNonces = new Set<string>(); // key: token|from|nonce
 
-function nonceKey(token: string, from: string, nonce: string) {
-  return `${token.toLowerCase()}|${from.toLowerCase()}|${nonce.toLowerCase()}`;
-}
-
-function isAllowedToken(token: string): boolean {
-  if (!allowlist) return true;
-  return allowlist.has(token.toLowerCase());
-}
-
-app.get("/api/tokenDomain", async (req: Request, res: Response) => {
-  try {
-    const token = String(req.query.token || "").toLowerCase();
-    if (!token) return res.status(400).json({ error: "token required" });
-    if (!isAllowedToken(token))
-      return res.status(400).json({ error: "token not allowed" });
-
-    const erc20 = new Contract(token, ERC20_ABI, provider);
-
-    let name = "Token";
-    let version = "1";
-    try {
-      name = await erc20.name();
-    } catch {
-      /* ignore */
-    }
-    try {
-      version = await erc20.version();
-    } catch {
-      /* ignore; default stays "1" */
-    }
-
-    const network = await provider.getNetwork();
-
-    const domain: Domain = {
-      name,
-      version,
-      chainId: Number(network.chainId),
-      verifyingContract: token,
-    };
-
-    return res.json(domain);
-  } catch (err: any) {
-    console.error(err);
-    return res.status(500).json({ error: "internal_error" });
-  }
-});
-
-app.post("/api/relay", async (req: Request, res: Response) => {
+app.post("/base/relay", async (req: Request, res: Response) => {
   try {
     const {
       token,
@@ -156,9 +95,6 @@ app.post("/api/relay", async (req: Request, res: Response) => {
     ) {
       return res.status(400).json({ error: "missing fields" });
     }
-
-    if (!isAllowedToken(token))
-      return res.status(400).json({ error: "token not allowed" });
 
     const typedDomain = domain as TypedDataDomain;
     if (
@@ -193,26 +129,28 @@ app.post("/api/relay", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "invalid signature" });
     }
 
-    const nonceTracker = nonceKey(token, from, nonce);
-    if (usedNonces.has(nonceTracker)) {
-      return res.status(400).json({ error: "nonce already used" });
-    }
+    console.log("from:", from);
+    console.log("to:", to);
+    console.log("value:", value);
+    console.log("validAfter:", validAfter);
+    console.log("validBefore:", validBefore);
+    console.log("nonce:", nonce);
+    console.log("signature:", signature);
+    let { v, r, s } = Signature.from(signature);
 
-    const { v, r, s } = Signature.from(signature);
-
-    const contract = new Contract(token, ERC3009_ABI, relayer);
+    console.log("relaying transaction...");
+    const contract = new Contract(token, USDC_ERC3009_ABI, relayer);
     const tx = await contract.transferWithAuthorization(
       from,
       to,
-      msg.value,
-      msg.validAfter,
-      msg.validBefore,
-      msg.nonce,
+      value,
+      validAfter,
+      validBefore,
+      nonce,
       v,
       r,
       s
     );
-    usedNonces.add(nonceTracker);
 
     return res.json({ txHash: tx.hash });
   } catch (err: any) {
@@ -227,16 +165,6 @@ const port = parseInt(process.env.PORT || "3001", 10);
 app.listen(port, () => {
   console.log(`erc3009 relay listening on http://localhost:${port}`);
 });
-
-function parseAllowlist(raw?: string | null) {
-  if (!raw) return null;
-  return new Set(
-    raw
-      .split(",")
-      .map((v) => v.trim().toLowerCase())
-      .filter(Boolean)
-  );
-}
 
 function requiredEnv(key: string): string {
   const val = process.env[key];

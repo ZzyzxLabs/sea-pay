@@ -23,7 +23,7 @@ paths:
       tags:
         - Health
       responses:
-        '200':
+        "200":
           description: Service is healthy
           content:
             application/json:
@@ -36,54 +36,7 @@ paths:
                 required:
                   - ok
 
-  /api/tokenDomain:
-    get:
-      summary: Get EIP-712 domain for a token
-      description: |
-        Retrieves the EIP-712 typed data domain for a given ERC-3009 compatible token.
-        This domain is required to sign TransferWithAuthorization messages.
-      operationId: getTokenDomain
-      tags:
-        - Token
-      parameters:
-        - name: token
-          in: query
-          required: true
-          description: The ERC-3009 token contract address
-          schema:
-            type: string
-            pattern: '^0x[a-fA-F0-9]{40}$'
-            example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-      responses:
-        '200':
-          description: Token domain information
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Domain'
-        '400':
-          description: Bad request - token required or not allowed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                tokenRequired:
-                  value:
-                    error: "token required"
-                tokenNotAllowed:
-                  value:
-                    error: "token not allowed"
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error: "internal_error"
-
-  /api/relay:
+  /base/relay:
     post:
       summary: Relay a signed ERC-3009 transfer
       description: |
@@ -98,7 +51,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RelayRequest'
+              $ref: "#/components/schemas/RelayRequest"
             examples:
               usdcTransfer:
                 value:
@@ -116,25 +69,22 @@ paths:
                     chainId: 1
                     verifyingContract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
       responses:
-        '200':
+        "200":
           description: Transaction submitted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RelayResponse'
-        '400':
+                $ref: "#/components/schemas/RelayResponse"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingFields:
                   value:
                     error: "missing fields"
-                tokenNotAllowed:
-                  value:
-                    error: "token not allowed"
                 domainMismatch:
                   value:
                     error: "domain verifyingContract mismatch"
@@ -144,15 +94,12 @@ paths:
                 invalidSignature:
                   value:
                     error: "invalid signature"
-                nonceUsed:
-                  value:
-                    error: "nonce already used"
-        '500':
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: "internal_error"
 
@@ -177,7 +124,7 @@ components:
         verifyingContract:
           type: string
           description: Token contract address
-          pattern: '^0x[a-fA-F0-9]{40}$'
+          pattern: "^0x[a-fA-F0-9]{40}$"
           example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
       required:
         - name
@@ -201,17 +148,17 @@ components:
         token:
           type: string
           description: ERC-3009 token contract address
-          pattern: '^0x[a-fA-F0-9]{40}$'
+          pattern: "^0x[a-fA-F0-9]{40}$"
           example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
         from:
           type: string
           description: Address of the token sender
-          pattern: '^0x[a-fA-F0-9]{40}$'
+          pattern: "^0x[a-fA-F0-9]{40}$"
           example: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
         to:
           type: string
           description: Address of the token recipient
-          pattern: '^0x[a-fA-F0-9]{40}$'
+          pattern: "^0x[a-fA-F0-9]{40}$"
           example: "0x8ba1f109551bD432803012645Hac136c22C3e0"
         value:
           type: string
@@ -231,15 +178,15 @@ components:
         nonce:
           type: string
           description: Unique nonce (32 bytes as hex string)
-          pattern: '^0x[a-fA-F0-9]{64}$'
+          pattern: "^0x[a-fA-F0-9]{64}$"
           example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
         signature:
           type: string
           description: ECDSA signature of the TransferWithAuthorization message
-          pattern: '^0x[a-fA-F0-9]{130}$'
+          pattern: "^0x[a-fA-F0-9]{130}$"
           example: "0x..."
         domain:
-          $ref: '#/components/schemas/Domain'
+          $ref: "#/components/schemas/Domain"
 
     RelayResponse:
       type: object
@@ -247,7 +194,7 @@ components:
         txHash:
           type: string
           description: Transaction hash of the submitted transfer
-          pattern: '^0x[a-fA-F0-9]{64}$'
+          pattern: "^0x[a-fA-F0-9]{64}$"
           example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
       required:
         - txHash
@@ -265,8 +212,5 @@ components:
 tags:
   - name: Health
     description: Health check endpoints
-  - name: Token
-    description: Token domain information
   - name: Relay
     description: Transaction relaying operations
-
