@@ -4,7 +4,7 @@ import { createCoinbaseWalletSDK } from "@coinbase/wallet-sdk";
 
 const APP_NAME = "SeaPay";
 const PREFERENCE = {
-  keysUrl: "http://localhost:3005/connect",
+  keysUrl: "https://keys-dev.coinbase.com/connect",
   options: "all" as const,
 };
 
