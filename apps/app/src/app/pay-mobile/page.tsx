@@ -4,6 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Web3 from "web3";
 import { getCoinbaseWalletSDK } from "@/wallet/coinbase";
+import {
+  buildTypedData,
+  message_5_minutes,
+  TRANSFER_WITH_AUTHORIZATION_TYPE,
+  USDC_Domain,
+} from "@seapay-ai/erc3009";
 
 type WalletStatus = "idle" | "connecting" | "connected" | "error";
 
@@ -18,6 +24,27 @@ type Eip1193Provider = {
   close?: () => void | Promise<void>;
 };
 
+type Chain = {
+  id: number;
+  name: string;
+  label: string;
+};
+
+type Asset = {
+  symbol: string;
+  name: string;
+  address: string;
+  decimals: number;
+  domain: {
+    name: string;
+    version: string;
+  };
+};
+
+type ChainAssets = {
+  [chainId: number]: Asset[];
+};
+
 const DEFAULT_CHAIN_ID = 1;
 
 const parsedChainId = Number(process.env.NEXT_PUBLIC_COINBASE_CHAIN_ID);
@@ -25,6 +52,63 @@ const chainId =
   Number.isFinite(parsedChainId) && parsedChainId > 0
     ? parsedChainId
     : DEFAULT_CHAIN_ID;
+
+const SUPPORTED_CHAINS: Chain[] = [
+  { id: 1, name: "ethereum", label: "Ethereum Mainnet" },
+  { id: 8453, name: "base", label: "Base Mainnet" },
+  { id: 84532, name: "base-sepolia", label: "Base Sepolia" },
+  { id: 11155111, name: "sepolia", label: "Ethereum Sepolia" },
+];
+
+const CHAIN_ASSETS: ChainAssets = {
+  1: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      decimals: 6,
+      domain: { name: "USD Coin", version: "2" },
+    },
+  ],
+  8453: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      decimals: 6,
+      domain: { name: "USD Coin", version: "2" },
+    },
+  ],
+  84532: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      decimals: 6,
+      domain: { name: "USDC", version: "2" },
+    },
+  ],
+  11155111: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      decimals: 6,
+      domain: { name: "USDC", version: "2" },
+    },
+  ],
+};
+
+const EIP712_DOMAIN_TYPES = [
+  { name: "name", type: "string" },
+  { name: "version", type: "string" },
+  { name: "chainId", type: "uint256" },
+  { name: "verifyingContract", type: "address" },
+];
+
+const DEFAULT_USDC_RECIPIENT =
+  "0xc3FcEF45C5a450D59E5F917Ed14A747649dbb360";
+const DEFAULT_USDC_AMOUNT = BigInt("100");
 
 const getNetworkLabel = (id: number) => {
   if (id === 1) {
@@ -47,9 +131,24 @@ export default function PayMobilePage() {
   const [address, setAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeChainId, setActiveChainId] = useState(chainId);
+  const [selectedChainId, setSelectedChainId] = useState<number>(84532); // Default to Base Sepolia
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
+  const [isSigning, setIsSigning] = useState(false);
   const providerRef = useRef<Eip1193Provider | null>(null);
   const web3Ref = useRef<Web3 | null>(null);
   const listenersAttachedRef = useRef(false);
+
+  // Initialize selected asset when chain changes
+  useEffect(() => {
+    const assets = CHAIN_ASSETS[selectedChainId];
+    if (assets && assets.length > 0) {
+      setSelectedAsset(assets[0]);
+    } else {
+      setSelectedAsset(null);
+    }
+  }, [selectedChainId]);
 
   const getProvider = useCallback(() => {
     if (!providerRef.current) {
@@ -61,6 +160,117 @@ export default function PayMobilePage() {
     }
     return providerRef.current;
   }, []);
+
+  const signTransferWithAuthorization = useCallback(
+    async (asset: Asset, to: string, value: bigint) => {
+      const provider = getProvider();
+      const walletAddress = address ?? web3Ref.current?.eth.defaultAccount;
+
+      if (typeof walletAddress !== "string") {
+        throw new Error("Wallet is not connected.");
+      }
+
+      const domain = {
+        name: asset.domain.name,
+        version: asset.domain.version,
+        chainId: selectedChainId,
+        verifyingContract: asset.address,
+      };
+      const message = message_5_minutes(walletAddress, to, value);
+      const typedData = buildTypedData({ domain, message });
+
+      const payload = {
+        domain: typedData.domain,
+        types: {
+          EIP712Domain: EIP712_DOMAIN_TYPES,
+          ...typedData.types,
+        },
+        primaryType: TRANSFER_WITH_AUTHORIZATION_TYPE,
+        message: {
+          ...typedData.message,
+          value: typedData.message.value.toString(),
+          validAfter: typedData.message.validAfter.toString(),
+          validBefore: typedData.message.validBefore.toString(),
+        },
+      };
+
+      console.log("Signing payload:", JSON.stringify(payload));
+      console.log("With wallet address:", walletAddress);
+
+      const signature = await provider.request({
+        method: "eth_signTypedData_v4",
+        params: [walletAddress, payload],
+      });
+
+      console.log("Received signature:", signature);
+
+      if (typeof signature !== "string") {
+        throw new Error("Unexpected signature response.");
+      }
+
+      return { signature, domain, message };
+    },
+    [address, getProvider, selectedChainId]
+  );
+
+  const signTransfer = useCallback(async () => {
+    if (!selectedAsset) {
+      setSignatureError("Please select an asset to transfer.");
+      return;
+    }
+
+    setIsSigning(true);
+    setSignatureError(null);
+
+    try {
+      const { signature, domain, message } = await signTransferWithAuthorization(
+        selectedAsset,
+        DEFAULT_USDC_RECIPIENT,
+        DEFAULT_USDC_AMOUNT
+      );
+
+      setSignature(signature);
+
+      // Send the signed transfer to the relay API
+      const relayResponse = await fetch("https://sea-pay.onrender.com/api/relay", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: domain.verifyingContract,
+          from: message.from,
+          to: message.to,
+          value: message.value.toString(),
+          validAfter: message.validAfter.toString(),
+          validBefore: message.validBefore.toString(),
+          nonce: message.nonce,
+          signature,
+          domain: {
+            name: domain.name,
+            version: domain.version,
+            chainId: domain.chainId.toString(),
+            verifyingContract: domain.verifyingContract,
+          },
+        }),
+      });
+
+      if (!relayResponse.ok) {
+        const errorText = await relayResponse.text();
+        throw new Error(`Relay API error: ${errorText}`);
+      }
+
+      const relayResult = await relayResponse.json();
+      console.log("Relay result:", relayResult);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to sign transfer.";
+      setSignature(null);
+      setSignatureError(message);
+    } finally {
+      setIsSigning(false);
+    }
+  }, [signTransferWithAuthorization, selectedAsset]);
 
   const handleAccountsChanged = useCallback((accounts: string[]) => {
     const primary = accounts?.[0] ?? null;
@@ -194,6 +404,8 @@ export default function PayMobilePage() {
     setActiveChainId(chainId);
     setStatus("idle");
     setError(null);
+    setSignature(null);
+    setSignatureError(null);
   }, [getProvider]);
 
   const statusLabel = (() => {
@@ -266,6 +478,73 @@ export default function PayMobilePage() {
           </div>
         ) : null}
 
+        {signatureError ? (
+          <div className="status status-error" role="status" aria-live="polite">
+            <div className="status-row status-row-stack">
+              <span className="status-label">Signature Error</span>
+              <span className="status-message">{signatureError}</span>
+            </div>
+          </div>
+        ) : null}
+
+        {signature ? (
+          <div className="status status-success" role="status" aria-live="polite">
+            <div className="status-row status-row-stack">
+              <span className="status-label">Signature</span>
+              <span className="tx-value">{signature}</span>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="status" style={{ marginTop: "1rem" }}>
+          <div className="status-row">
+            <span className="status-label">Select Chain</span>
+            <select
+              value={selectedChainId}
+              onChange={(e) => setSelectedChainId(Number(e.target.value))}
+              style={{
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                backgroundColor: "white",
+                fontSize: "0.9rem",
+              }}
+            >
+              {SUPPORTED_CHAINS.map((chain) => (
+                <option key={chain.id} value={chain.id}>
+                  {chain.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="status-row" style={{ marginTop: "0.5rem" }}>
+            <span className="status-label">Select Asset</span>
+            <select
+              value={selectedAsset?.address || ""}
+              onChange={(e) => {
+                const asset = CHAIN_ASSETS[selectedChainId]?.find(
+                  (a) => a.address === e.target.value
+                );
+                setSelectedAsset(asset || null);
+              }}
+              disabled={!CHAIN_ASSETS[selectedChainId]?.length}
+              style={{
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                backgroundColor: "white",
+                fontSize: "0.9rem",
+              }}
+            >
+              {CHAIN_ASSETS[selectedChainId]?.map((asset) => (
+                <option key={asset.address} value={asset.address}>
+                  {asset.name} ({asset.symbol})
+                </option>
+              )) || <option value="">No assets available</option>}
+            </select>
+          </div>
+        </div>
+
         <div className="actions">
           <button
             type="button"
@@ -283,6 +562,17 @@ export default function PayMobilePage() {
             className="secondary"
           >
             Disconnect
+          </button>
+          <button
+            type="button"
+            onClick={signTransfer}
+            disabled={status !== "connected" || isSigning || !selectedAsset}
+          >
+            {isSigning
+              ? "Signing..."
+              : selectedAsset
+                ? `Sign ${selectedAsset.symbol} Transfer`
+                : "Select Asset to Transfer"}
           </button>
         </div>
 

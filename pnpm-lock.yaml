@@ -20,6 +20,9 @@ importers:
       '@lottiefiles/dotlottie-react':
         specifier: ^0.17.12
         version: 0.17.12(react@19.2.3)
+      '@seapay-ai/erc3009':
+        specifier: ^0.1.0
+        version: 0.1.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@seapay/deeplink':
         specifier: workspace:^0.0.1
         version: link:../../packages/deeplink
@@ -1162,6 +1165,9 @@ packages:
 
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
+
+  '@seapay-ai/erc3009@0.1.0':
+    resolution: {integrity: sha512-k9ZuHvOfR4Z2ZCNpyRmSKL1KPZqaYWSBo8x1/u9RnrrYxIhBc3LgfI/bnJ1RtZTb+zMZ7X3SLWnhLn35JMbjKw==}
 
   '@sindresorhus/is@4.6.0':
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
@@ -4936,6 +4942,13 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
+
+  '@seapay-ai/erc3009@0.1.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
+    dependencies:
+      ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@sindresorhus/is@4.6.0': {}
 
