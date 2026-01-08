@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@seapay-ai/erc3009':
+        specifier: ^0.1.1
+        version: 0.1.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
     devDependencies:
       next:
         specifier: 16.1.1
@@ -21,8 +25,8 @@ importers:
         specifier: ^0.17.12
         version: 0.17.12(react@19.2.3)
       '@seapay-ai/erc3009':
-        specifier: ^0.1.0
-        version: 0.1.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+        specifier: ^0.1.1
+        version: 0.1.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@seapay/deeplink':
         specifier: workspace:^0.0.1
         version: link:../../packages/deeplink
@@ -32,6 +36,9 @@ importers:
       next:
         specifier: 16.1.1
         version: 16.1.1(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -1166,8 +1173,8 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
-  '@seapay-ai/erc3009@0.1.0':
-    resolution: {integrity: sha512-k9ZuHvOfR4Z2ZCNpyRmSKL1KPZqaYWSBo8x1/u9RnrrYxIhBc3LgfI/bnJ1RtZTb+zMZ7X3SLWnhLn35JMbjKw==}
+  '@seapay-ai/erc3009@0.1.1':
+    resolution: {integrity: sha512-Oc0tmGAVdEDcBlmAtjNr7ORgpzW8400xEIv3gJh/SVIdni6arCy1ma8WnHePyF9yf12MU/mBV7QYpLJQ+KnuLg==}
 
   '@sindresorhus/is@4.6.0':
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
@@ -4943,7 +4950,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
-  '@seapay-ai/erc3009@0.1.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
+  '@seapay-ai/erc3009@0.1.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
       ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
     transitivePeerDependencies:

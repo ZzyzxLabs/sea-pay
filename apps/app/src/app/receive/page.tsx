@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useFilteredWebSocket } from "@/hooks/useFilteredWebSocket";
 import Link from "next/link";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import QRCode from "qrcode";
 
-export default function MonitorPage() {
+export default function ReceivePage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [assetType, setAssetType] = useState("ETH");
@@ -17,6 +18,7 @@ export default function MonitorPage() {
   );
   const [lastSender, setLastSender] = useState<string | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [filterConfig, setFilterConfig] = useState<{
     address: string;
     amount: number;
@@ -25,7 +27,7 @@ export default function MonitorPage() {
 
   const paymentLink = (() => {
     if (!filterConfig) {
-      return "/pay";
+      return "/pay-mobile";
     }
     const params = new URLSearchParams();
     if (filterConfig.address) {
@@ -45,7 +47,7 @@ export default function MonitorPage() {
       params.set("sender", lastSender);
     }
     const query = params.toString();
-    return query ? `/pay?${query}` : "/pay";
+    return query ? `/pay-mobile?${query}` : "/pay-mobile";
   })();
 
   const { status, activities } = useFilteredWebSocket(filterConfig);
@@ -89,11 +91,34 @@ export default function MonitorPage() {
       console.log("Address added to webhook:", data);
 
       // Start monitoring
-      setFilterConfig({
+      const config = {
         address: walletAddress.trim().toLowerCase(),
         amount: parsedAmount,
         asset: assetType || "USDC",
-      });
+      };
+      setFilterConfig(config);
+
+      // Generate QR code for payment link
+      const params = new URLSearchParams();
+      params.set("address", config.address);
+      params.set("amount", String(config.amount));
+      params.set("asset", config.asset);
+      const fullUrl = `${window.location.origin}/pay-mobile?${params.toString()}`;
+
+      try {
+        const qrDataUrl = await QRCode.toDataURL(fullUrl, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: "#000000",
+            light: "#ffffff",
+          },
+        });
+        setQrCodeDataUrl(qrDataUrl);
+      } catch (qrError) {
+        console.error("Error generating QR code:", qrError);
+      }
+
       setIsMonitoring(true);
       setMatchPhase("loading");
       setLastSender(null);
@@ -190,9 +215,9 @@ export default function MonitorPage() {
         <div>
           <p className="eyebrow">SeaPay</p>
           <h1>Receive Payments</h1>
-          <Link href="/" className="tx-link hero-link">
+          {/* <Link href="/" className="tx-link hero-link">
             View all activity
-          </Link>
+          </Link> */}
         </div>
         <div className="hero-badge">
           <span className="pulse" />
@@ -364,6 +389,17 @@ export default function MonitorPage() {
                   loop={false}
                   className="modal-lottie"
                 />
+              ) : qrCodeDataUrl ? (
+                <img
+                  src={qrCodeDataUrl}
+                  alt="Payment QR Code"
+                  style={{
+                    width: "300px",
+                    height: "300px",
+                    margin: "0 auto",
+                    display: "block",
+                  }}
+                />
               ) : (
                 <DotLottieReact
                   key="loading"
@@ -375,12 +411,12 @@ export default function MonitorPage() {
               )}
 
               <h3 className="modal-title">
-                {hasMatch ? "Payment received" : "Waiting for payment..."}
+                {hasMatch ? "Payment received" : "Scan to Pay"}
               </h3>
               {filterConfig && (
                 <div className="modal-wallet">
                   <span className="tx-label">To</span>
-                  <span className="tx-value">{filterConfig.address}</span>
+                  <span className="">{filterConfig.address}</span>
                   <span className="tx-label">Amount</span>
                   <span className="tx-value">
                     {amount || filterConfig.amount} {assetType}
