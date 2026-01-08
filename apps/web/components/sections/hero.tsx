@@ -174,7 +174,7 @@ function CheckoutDemo() {
   const [amount, setAmount] = useState("1");
   const [fiatCurrency, setFiatCurrency] = useState<"USD" | "EUR">("USD");
   const [currency, setCurrency] = useState("USDC-BASE");
-  const [receiver, setReceiver] = useState("0xAlice");
+  const [receiver, setReceiver] = useState("");
   const [isFiatDropdownOpen, setIsFiatDropdownOpen] = useState(false);
 
   const usdcAmount = parseFloat(amount) || 0;
@@ -312,23 +312,6 @@ function CheckoutDemo() {
 
         {/* Transaction Details */}
         <div className='space-y-2'>
-          {/* Quote */}
-          <div className='rounded-lg border border-slate-200 bg-white px-4 py-3'>
-            <div className='flex items-center gap-2 text-sm font-medium text-slate-900'>
-              <span>
-                Quote: {amount || "0"} USD → {usdcAmount.toFixed(2)}
-              </span>
-              <Image
-                src='/usdc-logo.svg'
-                alt='USDC'
-                width={16}
-                height={16}
-                className='inline-block'
-              />
-              <span>USDC</span>
-            </div>
-          </div>
-
           {/* Receiver */}
           <div className='rounded-lg border border-slate-200 bg-white px-4 py-3'>
             <div className='flex items-center justify-between gap-2'>
@@ -343,6 +326,31 @@ function CheckoutDemo() {
                 className='h-8 flex-1 border-0 bg-transparent p-0 text-left text-sm font-mono text-slate-900 focus-visible:ring-0 placeholder:text-left'
               />
             </div>
+          </div>
+
+          {/* Quote with Submit Button */}
+          <div className='flex items-center gap-2'>
+            <div className='flex-1 rounded-lg border border-slate-200 bg-white px-4 py-3'>
+              <div className='flex items-center gap-2 text-sm font-medium text-slate-900'>
+                <span>
+                  Quote: {amount || "0"} USD → {usdcAmount.toFixed(2)}
+                </span>
+                <Image
+                  src='/usdc-logo.svg'
+                  alt='USDC'
+                  width={16}
+                  height={16}
+                  className='inline-block'
+                />
+                <span>USDC</span>
+              </div>
+            </div>
+            <Button
+              size='sm'
+              className='bg-black text-white hover:bg-slate-800'
+            >
+              Submit
+            </Button>
           </div>
         </div>
       </CardContent>
