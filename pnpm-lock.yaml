@@ -1241,9 +1241,6 @@ packages:
   '@seapay-ai/erc3009@0.1.1':
     resolution: {integrity: sha512-Oc0tmGAVdEDcBlmAtjNr7ORgpzW8400xEIv3gJh/SVIdni6arCy1ma8WnHePyF9yf12MU/mBV7QYpLJQ+KnuLg==}
 
-  '@seapay-ai/erc3009@0.1.1':
-    resolution: {integrity: sha512-Oc0tmGAVdEDcBlmAtjNr7ORgpzW8400xEIv3gJh/SVIdni6arCy1ma8WnHePyF9yf12MU/mBV7QYpLJQ+KnuLg==}
-
   '@sindresorhus/is@4.6.0':
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
     engines: {node: '>=10'}
@@ -5137,13 +5134,6 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
-
-  '@seapay-ai/erc3009@0.1.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
-    dependencies:
-      ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   '@seapay-ai/erc3009@0.1.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
