@@ -13,5 +13,8 @@
     "clean": "pnpm -r exec rm -rf dist .next out node_modules",
     "typecheck": "pnpm -r exec tsc --noEmit",
     "devapp": "pnpm -r --parallel --filter @seapay/app --filter @seapay/webhook dev"
+  },
+  "dependencies": {
+    "@seapay-ai/erc3009": "^0.1.1"
   }
 }

@@ -5,10 +5,12 @@ import Link from "next/link";
 import Web3 from "web3";
 import { getCoinbaseWalletSDK } from "@/wallet/coinbase";
 import {
+  resolveDomain,
+  buildMessage,
   buildTypedData,
-  message_5_minutes,
-  TRANSFER_WITH_AUTHORIZATION_TYPE,
-  USDC_Domain,
+  erc3009,
+  randomNonce,
+  TRANSFER_WITH_AUTHORIZATION_TYPE
 } from "@seapay-ai/erc3009";
 
 type WalletStatus = "idle" | "connecting" | "connected" | "error";
@@ -58,6 +60,7 @@ const SUPPORTED_CHAINS: Chain[] = [
   { id: 8453, name: "base", label: "Base Mainnet" },
   { id: 84532, name: "base-sepolia", label: "Base Sepolia" },
   { id: 11155111, name: "sepolia", label: "Ethereum Sepolia" },
+  { id: 80002, name: "amoy", label: "Polygon Testnet (Amoy)" },
 ];
 
 const CHAIN_ASSETS: ChainAssets = {
@@ -123,6 +126,9 @@ const getNetworkLabel = (id: number) => {
   if (id === 11155111) {
     return "Ethereum Sepolia";
   }
+  if (id === 80002) {
+    return "polygon Testnet (Amoy)"
+  }
   return `Chain ${id}`;
 };
 
@@ -136,9 +142,36 @@ export default function PayMobilePage() {
   const [signature, setSignature] = useState<string | null>(null);
   const [signatureError, setSignatureError] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+  const [transactionSuccess, setTransactionSuccess] = useState(false);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const [recipientAddress, setRecipientAddress] = useState<string>(DEFAULT_USDC_RECIPIENT);
+  const [paymentAmount, setPaymentAmount] = useState<string>("");
   const providerRef = useRef<Eip1193Provider | null>(null);
   const web3Ref = useRef<Web3 | null>(null);
   const listenersAttachedRef = useRef(false);
+
+  // Read URL parameters on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addressParam = params.get("address");
+    const amountParam = params.get("amount");
+    const assetParam = params.get("asset");
+
+    if (addressParam) {
+      setRecipientAddress(addressParam);
+    }
+    if (amountParam) {
+      setPaymentAmount(amountParam);
+    }
+    if (assetParam) {
+      // Try to find the asset in the current chain's assets
+      const assets = CHAIN_ASSETS[selectedChainId];
+      const foundAsset = assets?.find(a => a.symbol.toUpperCase() === assetParam.toUpperCase());
+      if (foundAsset) {
+        setSelectedAsset(foundAsset);
+      }
+    }
+  }, []);
 
   // Initialize selected asset when chain changes
   useEffect(() => {
@@ -170,15 +203,25 @@ export default function PayMobilePage() {
         throw new Error("Wallet is not connected.");
       }
 
-      const domain = {
-        name: asset.domain.name,
-        version: asset.domain.version,
+      // 1. Resolve domain from registry
+      const domain = resolveDomain({
         chainId: selectedChainId,
-        verifyingContract: asset.address,
-      };
-      const message = message_5_minutes(walletAddress, to, value);
-      const typedData = buildTypedData({ domain, message });
+        token: "USDC",
+      });
 
+      // 2. Build message
+      const message = buildMessage({
+        from: walletAddress,
+        to: to,
+        value: value,
+        validAfter: 0,
+        validBefore: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
+        nonce: randomNonce(),
+      });
+
+      
+      // 3. Build typed data
+      const typedData = buildTypedData({ domain, message });
       const payload = {
         domain: typedData.domain,
         types: {
@@ -201,12 +244,16 @@ export default function PayMobilePage() {
         method: "eth_signTypedData_v4",
         params: [walletAddress, payload],
       });
+      
 
       console.log("Received signature:", signature);
 
       if (typeof signature !== "string") {
+        console.error("Invalid signature response:", signature);
         throw new Error("Unexpected signature response.");
       }
+
+      console.log("Domain:", JSON.stringify(domain));
 
       return { signature, domain, message };
     },
@@ -219,20 +266,25 @@ export default function PayMobilePage() {
       return;
     }
 
+    // Use the payment amount from URL params or default
+    const amountToSend = paymentAmount
+      ? BigInt(Math.floor(parseFloat(paymentAmount) * Math.pow(10, selectedAsset.decimals)))
+      : DEFAULT_USDC_AMOUNT;
+
     setIsSigning(true);
     setSignatureError(null);
 
     try {
       const { signature, domain, message } = await signTransferWithAuthorization(
         selectedAsset,
-        DEFAULT_USDC_RECIPIENT,
-        DEFAULT_USDC_AMOUNT
+        recipientAddress,
+        amountToSend
       );
 
       setSignature(signature);
 
       // Send the signed transfer to the relay API
-      const relayResponse = await fetch("https://sea-pay.onrender.com/api/relay", {
+      const relayResponse = await fetch("https://sea-pay.onrender.com/erc3009/relay", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -262,15 +314,23 @@ export default function PayMobilePage() {
 
       const relayResult = await relayResponse.json();
       console.log("Relay result:", relayResult);
+
+      // Set success state
+      setTransactionSuccess(true);
+      if (relayResult.transactionHash || relayResult.hash || relayResult.txHash) {
+        setTransactionHash(relayResult.transactionHash || relayResult.hash || relayResult.txHash);
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to sign transfer.";
       setSignature(null);
       setSignatureError(message);
+      setTransactionSuccess(false);
+      setTransactionHash(null);
     } finally {
       setIsSigning(false);
     }
-  }, [signTransferWithAuthorization, selectedAsset]);
+  }, [signTransferWithAuthorization, selectedAsset, recipientAddress, paymentAmount]);
 
   const handleAccountsChanged = useCallback((accounts: string[]) => {
     const primary = accounts?.[0] ?? null;
@@ -427,48 +487,45 @@ export default function PayMobilePage() {
       : status === "error"
         ? "status-error"
         : "";
+  const shortAddress =
+    status === "connected" && address
+      ? `${address.slice(0, 6)}...${address.slice(-4)}`
+      : null;
 
   return (
     <main className="app">
       <header className="hero">
         <div>
           <p className="eyebrow">SeaPay</p>
-          <h1>Pay on Mobile</h1>
+          <h1>Make a Payment</h1>
           <p className="lede">
-            Connect your Coinbase Wallet on mobile to view your account details.
+            Connect your Coinbase Wallet on mobile.
           </p>
-          <Link href="/" className="tx-link hero-link">
+          {/* <Link href="/" className="tx-link hero-link">
             Back to activity
-          </Link>
+          </Link> */}
         </div>
-        <div className="hero-badge">
+        <div
+          className={`hero-badge hero-badge-compact ${statusClass}`}
+          role="status"
+          aria-live="polite"
+        >
           <span className="pulse" />
           <span>{statusLabel}</span>
+          {shortAddress ? (
+            <>
+              <span className="hero-badge-sep" aria-hidden="true">
+                •
+              </span>
+              <span className="tx-value hero-badge-account">
+                {shortAddress}
+              </span>
+            </>
+          ) : null}
         </div>
       </header>
 
       <section className="panel">
-        <div className={`status ${statusClass}`} role="status" aria-live="polite">
-          <div className="status-row">
-            <span className="status-label">Connection</span>
-            <span>{statusLabel}</span>
-          </div>
-          <div className="status-row">
-            <span className="status-label">Account</span>
-            <span className="tx-value">
-              {status === "connected" ? `${address}` : "Not connected"}
-            </span>
-          </div>
-          <div className="status-row">
-            <span className="status-label">Network</span>
-            <span>
-              {status === "connected"
-                ? `${getNetworkLabel(activeChainId)} (${activeChainId})`
-                : "Not connected"}
-            </span>
-          </div>
-        </div>
-
         {error ? (
           <div className="status status-error" role="status" aria-live="polite">
             <div className="status-row status-row-stack">
@@ -487,7 +544,22 @@ export default function PayMobilePage() {
           </div>
         ) : null}
 
-        {signature ? (
+        {transactionSuccess ? (
+          <div className="status status-success" role="status" aria-live="polite">
+            <div className="status-row status-row-stack">
+              <span className="status-label">Transaction Successful</span>
+              <span className="status-message">
+                Your payment is complete!
+              </span>
+            </div>
+            {transactionHash && (
+              <div className="status-row status-row-stack">
+                <span className="status-label">Transaction Hash</span>
+                <span className="tx-value">{transactionHash}</span>
+              </div>
+            )}
+          </div>
+        ) : signature ? (
           <div className="status status-success" role="status" aria-live="polite">
             <div className="status-row status-row-stack">
               <span className="status-label">Signature</span>
@@ -495,6 +567,21 @@ export default function PayMobilePage() {
             </div>
           </div>
         ) : null}
+
+        <div className="status" style={{ marginTop: "1rem" }}>
+          <div className="status-row">
+            <span className="status-label">Recipient Address</span>
+            <span className="tx-value">{recipientAddress}</span>
+          </div>
+          {paymentAmount && (
+            <div className="status-row">
+              <span className="status-label">Amount</span>
+              <span className="tx-value">
+                {paymentAmount} {selectedAsset?.symbol || ""}
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="status" style={{ marginTop: "1rem" }}>
           <div className="status-row">
@@ -568,11 +655,7 @@ export default function PayMobilePage() {
             onClick={signTransfer}
             disabled={status !== "connected" || isSigning || !selectedAsset}
           >
-            {isSigning
-              ? "Signing..."
-              : selectedAsset
-                ? `Sign ${selectedAsset.symbol} Transfer`
-                : "Select Asset to Transfer"}
+            {isSigning ? "Paying..." : "Pay"}
           </button>
         </div>
 

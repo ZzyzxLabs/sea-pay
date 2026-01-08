@@ -37,7 +37,7 @@ export function ActivityFeed() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <Link
-            href="/monitor"
+            href="/receive"
             style={{
               color: 'var(--color-blue-600)',
               textDecoration: 'none',

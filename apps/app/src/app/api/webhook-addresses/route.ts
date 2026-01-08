@@ -21,7 +21,7 @@ export async function PATCH(request: NextRequest) {
         { status: 500 }
       );
     }
-
+    
     const url = "https://dashboard.alchemy.com/api/update-webhook-addresses";
     const options = {
       method: "PATCH",

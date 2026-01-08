@@ -1,15 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f4efe6;
-  --bg-strong: #f0e2cc;
-  --card: #fff7ed;
-  --ink: #1a1a1a;
-  --muted: #6f6054;
-  --accent: #ff6b35;
-  --accent-2: #1e8e76;
-  --line: rgba(26, 26, 26, 0.12);
-  --shadow: 0 20px 60px rgba(41, 28, 16, 0.15);
+  --bg: #e6f6f6;
+  --bg-strong: #d2eff1;
+  --card: #f7feff;
+  --ink: #0b2430;
+  --muted: #54727c;
+  --accent: #19b6b3;
+  --accent-2: #0b6a7c;
+  --ink-rgb: 11, 36, 48;
+  --accent-rgb: 25, 182, 179;
+  --accent-2-rgb: 11, 106, 124;
+  --line: rgba(var(--ink-rgb), 0.12);
+  --shadow: 0 20px 60px rgba(var(--ink-rgb), 0.18);
 }
 
 @theme inline {
@@ -27,7 +30,7 @@ body {
   margin: 0;
   font-family: var(--font-space-grotesk), "Space Grotesk", "Segoe UI", sans-serif;
   color: var(--ink);
-  background: radial-gradient(circle at top, #fff3df 0%, var(--bg) 45%, #f3eadc 100%);
+  background: radial-gradient(circle at top, #f5ffff 0%, var(--bg) 45%, #dff1f4 100%);
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
@@ -48,13 +51,13 @@ body::after {
 body::before {
   top: -140px;
   right: -120px;
-  background: radial-gradient(circle, rgba(255, 107, 53, 0.65), transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.5), transparent 70%);
 }
 
 body::after {
   bottom: -160px;
   left: -120px;
-  background: radial-gradient(circle, rgba(30, 142, 118, 0.55), transparent 72%);
+  background: radial-gradient(circle, rgba(var(--accent-2-rgb), 0.45), transparent 72%);
 }
 
 .app {
@@ -98,11 +101,30 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: rgba(26, 26, 26, 0.08);
-  border: 1px solid rgba(26, 26, 26, 0.16);
+  background: rgba(var(--ink-rgb), 0.08);
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
   padding: 12px 16px;
   border-radius: 999px;
   font-weight: 600;
+}
+
+.hero-badge-compact {
+  padding: 8px 12px;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.hero-badge-compact .pulse {
+  width: 8px;
+  height: 8px;
+}
+
+.hero-badge-sep {
+  color: var(--muted);
+}
+
+.hero-badge-account {
+  font-size: 12px;
 }
 
 .hero-link {
@@ -116,7 +138,7 @@ h1 {
   height: 10px;
   background: var(--accent);
   border-radius: 999px;
-  box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.6);
+  box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.6);
   animation: pulse 2s infinite;
 }
 
@@ -162,8 +184,8 @@ h1 {
 
 .form-input:focus {
   outline: none;
-  border-color: rgba(30, 142, 118, 0.6);
-  box-shadow: 0 0 0 3px rgba(30, 142, 118, 0.15);
+  border-color: rgba(var(--accent-2-rgb), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-2-rgb), 0.15);
 }
 
 .form-input:disabled {
@@ -219,14 +241,14 @@ h1 {
 .status {
   display: grid;
   gap: 8px;
-  background: rgba(26, 26, 26, 0.04);
+  background: rgba(var(--ink-rgb), 0.04);
   border-radius: 16px;
   padding: 16px;
 }
 
 .status-warning {
-  background: rgba(255, 107, 53, 0.08);
-  border: 1px solid rgba(255, 107, 53, 0.2);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.24);
 }
 
 .status-error {
@@ -235,8 +257,8 @@ h1 {
 }
 
 .status-success {
-  background: rgba(30, 142, 118, 0.12);
-  border: 1px solid rgba(30, 142, 118, 0.28);
+  background: rgba(var(--accent-2-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.28);
 }
 
 .status-row {
@@ -315,7 +337,7 @@ h1 {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(26, 26, 26, 0.35);
+  background: rgba(var(--ink-rgb), 0.35);
   backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
@@ -360,7 +382,7 @@ h1 {
 }
 
 .modal-qr-loading {
-  background: rgba(26, 26, 26, 0.04);
+  background: rgba(var(--ink-rgb), 0.04);
 }
 
 .modal-close {
@@ -372,7 +394,7 @@ h1 {
   border-radius: 999px;
   border: none;
   background: transparent;
-  color: rgba(26, 26, 26, 0.4);
+  color: rgba(var(--ink-rgb), 0.4);
   font-size: 16px;
   line-height: 1;
   padding: 0;
@@ -449,18 +471,18 @@ h1 {
 }
 
 .tx-direction.in {
-  background: rgba(30, 142, 118, 0.15);
+  background: rgba(var(--accent-2-rgb), 0.15);
   color: var(--accent-2);
 }
 
 .tx-direction.out {
-  background: rgba(255, 107, 53, 0.15);
+  background: rgba(var(--accent-rgb), 0.15);
   color: var(--accent);
 }
 
 .tx-direction.self {
-  background: rgba(26, 26, 26, 0.12);
-  color: #1a1a1a;
+  background: rgba(var(--ink-rgb), 0.12);
+  color: var(--ink);
 }
 
 .tx-grid {
@@ -520,12 +542,12 @@ button:disabled {
 
 button:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 25px rgba(255, 107, 53, 0.25);
+  box-shadow: 0 10px 25px rgba(var(--accent-rgb), 0.25);
 }
 
 button.modal-close:hover {
   box-shadow: none;
-  color: rgba(26, 26, 26, 0.75);
+  color: rgba(var(--ink-rgb), 0.75);
 }
 
 button.inline-button:hover {
@@ -534,19 +556,19 @@ button.inline-button:hover {
 }
 
 button#startBtn {
-  background: linear-gradient(135deg, var(--accent), #ffb347);
-  color: #1a1a1a;
+  background: linear-gradient(135deg, var(--accent), #6fe6d7);
+  color: var(--ink);
 }
 
 button.secondary {
-  background: #1a1a1a;
-  color: #fef5e7;
+  background: var(--ink);
+  color: #e7fbfb;
 }
 
 button.ghost {
   background: transparent;
   color: var(--muted);
-  border: 1px solid rgba(26, 26, 26, 0.2);
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
 }
 
 .inline-button {
@@ -611,13 +633,13 @@ button.ghost {
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.6);
+    box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.6);
   }
   70% {
-    box-shadow: 0 0 0 12px rgba(255, 107, 53, 0);
+    box-shadow: 0 0 0 12px rgba(var(--accent-rgb), 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0);
+    box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0);
   }
 }
 
