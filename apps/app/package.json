@@ -11,15 +11,16 @@
   "dependencies": {
     "@coinbase/wallet-sdk": "^4.0.0",
     "@lottiefiles/dotlottie-react": "^0.17.12",
-    "@seapay/deeplink": "workspace:^0.0.1",
     "@seapay-ai/erc3009": "^0.1.1",
+    "@seapay/deeplink": "workspace:^0.0.1",
     "lottie-react": "^2.4.1",
     "next": "16.1.1",
+    "qr-code-styling": "^1.9.2",
+    "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "socket.io-client": "^4.8.3",
-    "web3": "^1.7.0",
-    "qrcode": "^1.5.4"
+    "web3": "^1.7.0"
   },
   "devDependencies": {
     "@coinbase/wallet-sdk": "^4.0.0",
