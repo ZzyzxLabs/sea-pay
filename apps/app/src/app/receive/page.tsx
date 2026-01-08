@@ -109,7 +109,7 @@ export default function ReceivePage() {
       console.log("Generated deeplink URL:", deeplinkurl);
       try {
         const qrDataUrl = await QRCode.toDataURL(deeplinkurl, {
-          width: 250,
+          width: 200,
           margin: 2,
           color: {
             dark: "#000000",
@@ -258,7 +258,7 @@ export default function ReceivePage() {
               className="form-input"
             />
             <p className="form-help">
-              Enter the wallet address to monitor (from or to)
+              Enter your wallet address to receive payments
             </p>
           </div>
 
@@ -311,7 +311,7 @@ export default function ReceivePage() {
                 disabled={isLoading}
                 className="secondary"
               >
-                {isLoading ? "Stopping..." : "Stop Monitoring"}
+                {isLoading ? "Canceling..." : "Cancel"}
               </button>
             )}
           </div>
@@ -377,7 +377,8 @@ export default function ReceivePage() {
             <button
               type="button"
               className="modal-close"
-              onClick={() => setIsPopupOpen(false)}
+              onClick={handleStopMonitoring}
+              disabled={isLoading}
               aria-label="Close popup"
             >
               x
@@ -396,8 +397,8 @@ export default function ReceivePage() {
                   src={qrCodeDataUrl}
                   alt="Payment QR Code"
                   style={{
-                    width: "300px",
-                    height: "300px",
+                    width: "200px",
+                    height: "200px",
                     margin: "0 auto",
                     display: "block",
                   }}
@@ -417,8 +418,8 @@ export default function ReceivePage() {
               </h3>
               {filterConfig && (
                 <div className="modal-wallet">
-                  <span className="tx-label">To</span>
-                  <span className="">{filterConfig.address}</span>
+                  {/* <span className="tx-label">To</span>
+                  <span className="">{filterConfig.address}</span> */}
                   <span className="tx-label">Amount</span>
                   <span className="tx-value">
                     {amount || filterConfig.amount} {assetType}
