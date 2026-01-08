@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { buildDeeplinkUrl } from "@seapay/deeplink";
+import QRCodeStyling from "qr-code-styling";
 import {
   Banknote,
   Lock,
   Sparkles,
-  QrCode,
   ChevronDown,
   ArrowRight,
   CheckCircle2,
@@ -295,8 +296,131 @@ function CheckoutDemo() {
   const [currency, setCurrency] = useState("USDC-BASE");
   const [receiver, setReceiver] = useState("");
   const [isFiatDropdownOpen, setIsFiatDropdownOpen] = useState(false);
+  const [cryptoPrice, setCryptoPrice] = useState<number>(1);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
+  const qrCodeInstance = useRef<QRCodeStyling | null>(null);
 
-  const usdcAmount = parseFloat(amount) || 0;
+  const fiatAmount = parseFloat(amount) || 0;
+  const cryptoAmount = cryptoPrice > 0 ? fiatAmount / cryptoPrice : 0;
+
+  // Fetch crypto price from CoinGecko
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        setIsLoadingPrice(true);
+        const [token] = currency.split("-");
+
+        // Map token symbols to CoinGecko IDs
+        const coinGeckoIds: Record<string, string> = {
+          USDC: "usd-coin",
+          USDT: "tether",
+          ETH: "ethereum",
+          BTC: "bitcoin",
+        };
+
+        const coinId = coinGeckoIds[token] || "usd-coin";
+        const vsCurrency = fiatCurrency.toLowerCase();
+
+        const apiKey = process.env.NEXT_PUBLIC_COIN_GECKO_API_KEY || "";
+        const response = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}&x_cg_demo_api_key=${apiKey}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch price");
+        }
+
+        const data = await response.json();
+        const price = data[coinId]?.[vsCurrency];
+
+        if (price) {
+          setCryptoPrice(price);
+        }
+      } catch (error) {
+        console.error("Failed to fetch crypto price:", error);
+        // Default to 1:1 for stablecoins if fetch fails
+        setCryptoPrice(1);
+      } finally {
+        setIsLoadingPrice(false);
+      }
+    };
+
+    fetchPrice();
+  }, [currency, fiatCurrency]);
+
+  useEffect(() => {
+    const generateQrCode = async () => {
+      try {
+        // Build payment URL with parameters
+        const params = new URLSearchParams();
+        if (receiver) {
+          params.set("address", receiver);
+        }
+        if (amount) {
+          params.set("amount", amount);
+        }
+        if (currency) {
+          const [token] = currency.split("-");
+          params.set("asset", token);
+        }
+
+        // Create full URL and encode it for deeplink
+        const paymentUrl = `${window.location.origin}/pay-mobile?${params.toString()}`;
+        const deeplinkUrl = buildDeeplinkUrl(paymentUrl);
+        console.log("Deeplink URL:", deeplinkUrl);
+
+        // Create or update QR code with styling
+        if (!qrCodeInstance.current) {
+          qrCodeInstance.current = new QRCodeStyling({
+            width: 300,
+            height: 300,
+            data: deeplinkUrl,
+            margin: 10,
+            qrOptions: {
+              typeNumber: 0,
+              mode: "Byte",
+              errorCorrectionLevel: "Q",
+            },
+            imageOptions: {
+              hideBackgroundDots: true,
+              imageSize: 0.4,
+              margin: 8,
+            },
+            dotsOptions: {
+              color: "#1e293b",
+              type: "rounded",
+            },
+            backgroundOptions: {
+              color: "#ffffff",
+            },
+            cornersSquareOptions: {
+              color: "#0f172a",
+              type: "extra-rounded",
+            },
+            cornersDotOptions: {
+              color: "#0f172a",
+              type: "dot",
+            },
+          });
+        } else {
+          qrCodeInstance.current.update({
+            data: deeplinkUrl,
+          });
+        }
+
+        // Append to DOM if ref is available
+        if (qrCodeRef.current) {
+          qrCodeRef.current.innerHTML = "";
+          qrCodeInstance.current.append(qrCodeRef.current);
+        }
+      } catch (error) {
+        console.error("Failed to generate QR code:", error);
+      }
+    };
+
+    generateQrCode();
+  }, [receiver, amount, currency]);
 
   const tokenOptions = [
     { token: "USDC", blockchain: "BASE", value: "USDC-BASE" },
@@ -316,10 +440,10 @@ function CheckoutDemo() {
       <CardContent className='space-y-4 pt-4'>
         {/* QR Code Display Area */}
         <div className='flex aspect-square w-full items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50'>
-          <div className='flex flex-col items-center gap-2 text-slate-400'>
-            <QrCode className='h-16 w-16' />
-            <span className='text-sm font-medium'>QR Code</span>
-          </div>
+          <div
+            ref={qrCodeRef}
+            className='flex items-center justify-center w-full h-full p-4'
+          />
         </div>
 
         {/* Input Fields */}
@@ -452,16 +576,21 @@ function CheckoutDemo() {
             <div className='flex-1 rounded-lg border border-slate-200 bg-white px-4 py-3'>
               <div className='flex items-center gap-2 text-sm font-medium text-slate-900'>
                 <span>
-                  Quote: {amount || "0"} USD → {usdcAmount.toFixed(2)}
+                  Quote: {amount || "0"} {fiatCurrency} →{" "}
+                  {isLoadingPrice ? "..." : cryptoAmount.toFixed(6)}
                 </span>
                 <Image
-                  src='/usdc-logo.svg'
-                  alt='USDC'
+                  src={
+                    currency.startsWith("USDC")
+                      ? "/usdc-logo.svg"
+                      : "/tether-logo.svg"
+                  }
+                  alt={currency.split("-")[0]}
                   width={16}
                   height={16}
                   className='inline-block'
                 />
-                <span>USDC</span>
+                <span>{currency.split("-")[0]}</span>
               </div>
             </div>
             <Button

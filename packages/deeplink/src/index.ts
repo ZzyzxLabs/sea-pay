@@ -1,2 +1,2 @@
 export { buildDeeplinkUrl } from "./deeplink.js";
-export { generateQr } from "./qr.js";
+export { generateQr, type GenerateQrParams, type QrOutputFormat } from "./qr.js";
