@@ -1,0 +1,216 @@
+openapi: 3.0.3
+info:
+  title: Seapay ERC-3009 Relayer Service
+  description: |
+    API for relaying ERC-3009 (TransferWithAuthorization) transactions.
+    This service accepts signed authorization messages and submits them to the blockchain
+    on behalf of users, enabling gasless token transfers.
+  version: 0.0.1
+  contact:
+    name: Seapay
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+  - url: https://relay.seapay.example
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                required:
+                  - ok
+
+  /base/relay:
+    post:
+      summary: Relay a signed ERC-3009 transfer
+      description: |
+        Submits a signed TransferWithAuthorization transaction to the blockchain.
+        The service validates the signature, checks the authorization window,
+        verifies nonce uniqueness, and submits the transaction on behalf of the user.
+      operationId: relayTransfer
+      tags:
+        - Relay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelayRequest"
+            examples:
+              usdcTransfer:
+                value:
+                  token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                  from: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+                  to: "0x8ba1f109551bD432803012645Hac136c22C3e0"
+                  value: "1000000"
+                  validAfter: "1704067200"
+                  validBefore: "1704153600"
+                  nonce: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                  signature: "0x..."
+                  domain:
+                    name: "USD Coin"
+                    version: "2"
+                    chainId: 1
+                    verifyingContract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      responses:
+        "200":
+          description: Transaction submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelayResponse"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                missingFields:
+                  value:
+                    error: "missing fields"
+                domainMismatch:
+                  value:
+                    error: "domain verifyingContract mismatch"
+                invalidWindow:
+                  value:
+                    error: "authorization not in valid window"
+                invalidSignature:
+                  value:
+                    error: "invalid signature"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "internal_error"
+
+components:
+  schemas:
+    Domain:
+      type: object
+      description: EIP-712 typed data domain
+      properties:
+        name:
+          type: string
+          description: Token name
+          example: "USD Coin"
+        version:
+          type: string
+          description: Token version (typically "1" or "2")
+          example: "2"
+        chainId:
+          type: integer
+          description: Chain ID
+          example: 1
+        verifyingContract:
+          type: string
+          description: Token contract address
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      required:
+        - name
+        - version
+        - chainId
+        - verifyingContract
+
+    RelayRequest:
+      type: object
+      required:
+        - token
+        - from
+        - to
+        - value
+        - validAfter
+        - validBefore
+        - nonce
+        - signature
+        - domain
+      properties:
+        token:
+          type: string
+          description: ERC-3009 token contract address
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        from:
+          type: string
+          description: Address of the token sender
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          example: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+        to:
+          type: string
+          description: Address of the token recipient
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          example: "0x8ba1f109551bD432803012645Hac136c22C3e0"
+        value:
+          type: string
+          description: Token amount (as string to handle large numbers)
+          pattern: '^\d+$'
+          example: "1000000"
+        validAfter:
+          type: string
+          description: Unix timestamp when authorization becomes valid
+          pattern: '^\d+$'
+          example: "1704067200"
+        validBefore:
+          type: string
+          description: Unix timestamp when authorization expires
+          pattern: '^\d+$'
+          example: "1704153600"
+        nonce:
+          type: string
+          description: Unique nonce (32 bytes as hex string)
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        signature:
+          type: string
+          description: ECDSA signature of the TransferWithAuthorization message
+          pattern: "^0x[a-fA-F0-9]{130}$"
+          example: "0x..."
+        domain:
+          $ref: "#/components/schemas/Domain"
+
+    RelayResponse:
+      type: object
+      properties:
+        txHash:
+          type: string
+          description: Transaction hash of the submitted transfer
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+      required:
+        - txHash
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "token required"
+      required:
+        - error
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Relay
+    description: Transaction relaying operations

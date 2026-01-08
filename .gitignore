@@ -12,6 +12,7 @@ dist
 build
 out
 coverage
+openapi.bundle.yaml
 
 # IDE
 .DS_Store
