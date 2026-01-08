@@ -105,6 +105,25 @@ h1 {
   font-weight: 600;
 }
 
+.hero-badge-compact {
+  padding: 8px 12px;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.hero-badge-compact .pulse {
+  width: 8px;
+  height: 8px;
+}
+
+.hero-badge-sep {
+  color: var(--muted);
+}
+
+.hero-badge-account {
+  font-size: 12px;
+}
+
 .hero-link {
   display: inline-flex;
   margin-top: 12px;

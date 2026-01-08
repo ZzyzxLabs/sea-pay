@@ -487,6 +487,10 @@ export default function PayMobilePage() {
       : status === "error"
         ? "status-error"
         : "";
+  const shortAddress =
+    status === "connected" && address
+      ? `${address.slice(0, 6)}...${address.slice(-4)}`
+      : null;
 
   return (
     <main className="app">
@@ -501,25 +505,23 @@ export default function PayMobilePage() {
             Back to activity
           </Link> */}
         </div>
-        <div className={`status ${statusClass}`} role="status" aria-live="polite">
-          <div className="status-row">
-            <span className="status-label">Connection</span>
-            <span>{statusLabel}</span>
-          </div>
-          <div className="status-row">
-            <span className="status-label">Account</span>
-            <span className="tx-value">
-              {status === "connected" ? `${address}` : "Not connected"}
-            </span>
-          </div>
-          {/* <div className="status-row">
-            <span className="status-label">Network</span>
-            <span>
-              {status === "connected"
-                ? `${getNetworkLabel(activeChainId)} (${activeChainId})`
-                : "Not connected"}
-            </span>
-          </div> */}
+        <div
+          className={`hero-badge hero-badge-compact ${statusClass}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="pulse" />
+          <span>{statusLabel}</span>
+          {shortAddress ? (
+            <>
+              <span className="hero-badge-sep" aria-hidden="true">
+                •
+              </span>
+              <span className="tx-value hero-badge-account">
+                {shortAddress}
+              </span>
+            </>
+          ) : null}
         </div>
       </header>
 
@@ -653,11 +655,7 @@ export default function PayMobilePage() {
             onClick={signTransfer}
             disabled={status !== "connected" || isSigning || !selectedAsset}
           >
-            {isSigning
-              ? "Signing..."
-              : selectedAsset
-                ? `Sign ${selectedAsset.symbol} Transfer`
-                : "Select Asset to Transfer"}
+            {isSigning ? "Paying..." : "Pay"}
           </button>
         </div>
 

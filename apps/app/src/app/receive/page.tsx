@@ -219,10 +219,10 @@ export default function ReceivePage() {
             View all activity
           </Link> */}
         </div>
-        <div className="hero-badge">
+        {/* <div className="hero-badge">
           <span className="pulse" />
           <span>{getStatusText()}</span>
-        </div>
+        </div> */}
       </header>
 
       <section className="panel">
