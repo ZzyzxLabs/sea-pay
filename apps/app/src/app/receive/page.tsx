@@ -326,7 +326,7 @@ export default function ReceivePage() {
           </div>
         )}
 
-        {isMonitoring && filterConfig && (
+        {/* {isMonitoring && filterConfig && (
           <div className="status status-success" role="status" aria-live="polite">
             <div className="status-row status-row-stack">
               <span className="status-label">Monitoring</span>
@@ -336,7 +336,7 @@ export default function ReceivePage() {
               </span>
             </div>
           </div>
-        )}
+        )} */}
       </section>
 
       {/* <section className="results">
