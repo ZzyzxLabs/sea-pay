@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Banknote,
@@ -9,6 +9,8 @@ import {
   QrCode,
   ChevronDown,
   ArrowRight,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,14 +33,107 @@ import { Input } from "@/components/ui/input";
 import { Container } from "@/components/container";
 import { TokenSelector } from "./token-selector";
 
+type FormStatus = "idle" | "submitting" | "success" | "error";
+
 export function Hero() {
   const [email, setEmail] = useState("");
+  const [formStatus, setFormStatus] = useState<FormStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [utmParams, setUtmParams] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Extract UTM parameters from URL on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const utm: Record<string, string> = {};
+
+      [
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_term",
+        "utm_content",
+      ].forEach((key) => {
+        const value = params.get(key);
+        if (value) utm[key] = value;
+      });
+
+      setUtmParams(utm);
+    }
+  }, []);
+
+  // Email validation
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Email submitted:", email);
-    setEmail("");
+
+    // Reset error state
+    setErrorMessage("");
+
+    // Validate email
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage("Email is required");
+      setFormStatus("error");
+      return;
+    }
+
+    if (!validateEmail(trimmedEmail)) {
+      setErrorMessage("Please enter a valid email address");
+      setFormStatus("error");
+      return;
+    }
+
+    // Prevent double submission
+    if (formStatus === "submitting") {
+      return;
+    }
+
+    setFormStatus("submitting");
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          source: "website",
+          ...utmParams,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Provide user-friendly error message
+        const errorMessage =
+          data.error ||
+          "Unable to sign up at this time. Please try again later.";
+        throw new Error(errorMessage);
+      }
+
+      setFormStatus("success");
+      setEmail("");
+
+      // Reset success message after 5 seconds
+      setTimeout(() => {
+        setFormStatus("idle");
+      }, 5000);
+    } catch (error) {
+      console.error("Waitlist signup error:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
+      setFormStatus("error");
+    }
   };
 
   return (
@@ -143,25 +238,49 @@ export function Hero() {
                 latest product updates
               </p>
             </div>
-            <form
-              onSubmit={handleSubmit}
-              className='flex items-center gap-0 rounded-lg bg-white shadow-sm'
-            >
-              <Input
-                type='email'
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder='Enter email for updates*'
-                required
-                className='h-12 flex-1 rounded-l-lg rounded-r-none border-0 bg-white px-4 text-sm focus-visible:ring-0'
-              />
-              <Button
-                type='submit'
-                className='h-12 rounded-l-none rounded-r-lg bg-slate-200 px-6 text-sm font-medium uppercase text-slate-700 hover:bg-slate-300'
-              >
-                Submit
-              </Button>
-            </form>
+            {formStatus === "success" ? (
+              <div className='flex items-center gap-2 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700'>
+                <CheckCircle2 className='h-5 w-5 flex-shrink-0' />
+                <span className='font-medium'>
+                  Successfully added to waitlist!
+                </span>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className='flex flex-col gap-2'>
+                <div className='flex items-center gap-0 rounded-lg bg-white shadow-sm'>
+                  <Input
+                    type='email'
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      // Clear error when user starts typing
+                      if (formStatus === "error") {
+                        setFormStatus("idle");
+                        setErrorMessage("");
+                      }
+                    }}
+                    placeholder='Enter email for updates*'
+                    required
+                    disabled={formStatus === "submitting"}
+                    className='h-12 flex-1 rounded-l-lg rounded-r-none border-0 bg-white px-4 text-sm focus-visible:ring-0 disabled:opacity-50 disabled:cursor-not-allowed'
+                    aria-invalid={formStatus === "error"}
+                  />
+                  <Button
+                    type='submit'
+                    disabled={formStatus === "submitting"}
+                    className='h-12 rounded-l-none rounded-r-lg bg-slate-200 px-6 text-sm font-medium uppercase text-slate-700 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                  >
+                    {formStatus === "submitting" ? "..." : "Submit"}
+                  </Button>
+                </div>
+                {formStatus === "error" && errorMessage && (
+                  <div className='flex items-center gap-2 text-sm text-red-600'>
+                    <AlertCircle className='h-4 w-4 flex-shrink-0' />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+              </form>
+            )}
           </div>
         </div>
         <CheckoutDemo />

@@ -17,12 +17,13 @@ sea-pay/
 ├── apps/                 # End-user applications
 │   ├── app/             # Main Next.js app with real-time activity monitoring (@seapay/app)
 │   ├── web/             # Marketing/landing page Next.js app (@seapay/web)
-│   ├── erc3009-relay/   # ERC-3009 meta-transaction relay service (@seapay/erc3009-relay)
 │   ├── indexer/         # Simple polling indexer with WebSocket frontend (@seapay/indexer)
 │   └── webhook/         # Express webhook server with Socket.io (@seapay/webhook)
 ├── services/            # Production backend services
-│   └── indexer/         # Production indexer service with Supabase persistence (@seapay/indexer-service)
+│   ├── indexer/         # Production indexer service with Supabase persistence (@seapay/indexer-service)
+│   └── relayer/         # ERC-3009 meta-transaction relay service (@seapay/relayer-service)
 ├── packages/            # Shared libraries and configuration
+│   ├── deeplink/        # Deep link and QR code generation utilities (@seapay/deeplink)
 │   ├── erc3009/         # ERC-3009 EIP-712 signing utilities (@seapay-ai/erc3009)
 │   └── tsconfig/        # Shared TypeScript base configurations
 ├── tooling/             # Developer tooling packages
@@ -72,18 +73,6 @@ Real-time webhook monitoring system:
 
 **Tech Stack**: Express.js, Socket.io, Next.js, TypeScript
 
-### `@seapay/erc3009-relay` - Meta-Transaction Relay
-
-**Location**: `apps/erc3009-relay/`
-
-Express server for relaying ERC-3009 meta-transactions:
-
-- Handles signed authorization requests
-- Submits transactions on behalf of users
-- Uses `@seapay-ai/erc3009` package for signing
-
-**Tech Stack**: Express.js, ethers.js, TypeScript
-
 ### `@seapay/webhook` - Webhook Server
 
 **Location**: `apps/webhook/`
@@ -119,7 +108,43 @@ Production-ready blockchain indexer service:
 - `chain_cursors` - Last processed block per chain
 - `erc20_transfers` - Persisted transfer events
 
+### `@seapay/relayer-service` - ERC-3009 Relayer
+
+**Location**: `services/relayer/`
+
+Production service for relaying ERC-3009 (TransferWithAuthorization) transactions:
+
+- Multi-chain support (Base, Ethereum, Arbitrum, Optimism, Polygon)
+- Token registry integration (USDC pre-configured)
+- EIP-712 signature verification
+- Replay protection via nonce tracking
+- Token allowlist support
+- CORS enabled for web apps
+- Health check endpoint
+
+**Tech Stack**: Express.js, ethers.js, TypeScript
+
+**Features**:
+
+- Handles signed authorization requests
+- Submits transactions on behalf of users
+- Uses `@seapay-ai/erc3009` package for signing
+- OpenAPI specification included
+
 ## Packages (`packages/`)
+
+### `@seapay/deeplink` - Deep Link & QR Utilities
+
+**Location**: `packages/deeplink/`
+
+Utilities for generating deep links and QR codes:
+
+- Deep link URL generation for mobile wallets (Coinbase Wallet)
+- QR code generation for payment requests
+- ERC-681 compatible URI support
+- Command-line interface via `seapay-deeplink` binary
+
+**Tech Stack**: TypeScript, qrcode library
 
 ### `@seapay-ai/erc3009` - ERC-3009 Utilities
 
@@ -201,7 +226,6 @@ Run a specific app:
 pnpm --filter @seapay/app dev
 pnpm --filter @seapay/web dev
 pnpm --filter @seapay/indexer dev
-pnpm --filter @seapay/erc3009-relay dev
 pnpm --filter @seapay/webhook dev
 ```
 
@@ -209,6 +233,7 @@ Run services:
 
 ```bash
 pnpm --filter @seapay/indexer-service dev
+pnpm --filter @seapay/relayer-service dev
 ```
 
 ### Building
@@ -258,15 +283,16 @@ pnpm clean
 - `@seapay/app` - Main Next.js application with activity monitoring
 - `@seapay/web` - Marketing/landing page
 - `@seapay/indexer` - Simple indexer with WebSocket frontend
-- `@seapay/erc3009-relay` - Meta-transaction relay service
 - `@seapay/webhook` - Webhook server with Socket.io
 
 ### Services
 
 - `@seapay/indexer-service` - Production indexer with database persistence
+- `@seapay/relayer-service` - ERC-3009 meta-transaction relay service
 
 ### Packages
 
+- `@seapay/deeplink` - Deep link and QR code generation utilities
 - `@seapay-ai/erc3009` - ERC-3009 EIP-712 signing utilities (published to npm)
 - `@seapay/qr-generator` - QR code generator CLI and library
 
