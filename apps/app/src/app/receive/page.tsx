@@ -104,10 +104,12 @@ export default function ReceivePage() {
       params.set("amount", String(config.amount));
       params.set("asset", config.asset);
       const fullUrl = `${window.location.origin}/pay-mobile?${params.toString()}`;
-
+      const encodedUrl = encodeURIComponent(fullUrl);
+      const deeplinkurl = `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`
+      console.log("Generated deeplink URL:", deeplinkurl);
       try {
-        const qrDataUrl = await QRCode.toDataURL(fullUrl, {
-          width: 300,
+        const qrDataUrl = await QRCode.toDataURL(deeplinkurl, {
+          width: 250,
           margin: 2,
           color: {
             dark: "#000000",
