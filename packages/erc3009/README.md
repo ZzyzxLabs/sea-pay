@@ -157,35 +157,72 @@ const recovered = recoverSigner(domain, message, signature);
 console.log("Signed by:", recovered);
 
 // Verify signature
-const isValid = verifySignature(
-  domain,
-  message,
-  signature,
-  expectedSigner
-);
+const isValid = verifySignature(domain, message, signature, expectedSigner);
 ```
 
 ## Supported Chains
 
-| Chain | Chain ID | Testnet |
-|-------|----------|---------|
-| Ethereum | 1 | - |
-| Sepolia | 11155111 | ✅ |
-| Base | 8453 | - |
-| Base Sepolia | 84532 | ✅ |
-| Arbitrum One | 42161 | - |
-| Arbitrum Sepolia | 421614 | ✅ |
-| Optimism | 10 | - |
-| Optimism Sepolia | 11155420 | ✅ |
-| Polygon | 137 | - |
-| Polygon Amoy | 80002 | ✅ |
+| Chain            | Chain ID | Testnet |
+| ---------------- | -------- | ------- |
+| Ethereum         | 1        | -       |
+| Sepolia          | 11155111 | ✅      |
+| Base             | 8453     | -       |
+| Base Sepolia     | 84532    | ✅      |
+| Arbitrum One     | 42161    | -       |
+| Arbitrum Sepolia | 421614   | ✅      |
+| Optimism         | 10       | -       |
+| Optimism Sepolia | 11155420 | ✅      |
+| Polygon          | 137      | -       |
+| Polygon Amoy     | 80002    | ✅      |
 
 ## Supported Tokens
 
 Currently supports **USDC** on all chains above. The registry includes:
+
 - Proxy contract addresses
 - EIP-712 domain parameters (name, version)
 - Token decimals
+
+### ⚠️ Important: Base Network Domain Names
+
+USDC has **different domain names** on Base networks:
+
+| Network      | Chain ID | Domain Name  |
+| ------------ | -------- | ------------ |
+| Base Mainnet | 8453     | `"USD Coin"` |
+| Base Sepolia | 84532    | `"USDC"`     |
+
+**This is critical for signature verification!** Always use the correct domain name:
+
+```typescript
+// ✅ Correct - Base Mainnet
+const { typedData } = prepare({
+  chainId: 8453,
+  token: "USDC", // Resolves to name: "USD Coin"
+  from: "0x...",
+  to: "0x...",
+  value: 1000000n,
+});
+
+// ✅ Correct - Base Sepolia
+const { typedData } = prepare({
+  chainId: 84532,
+  token: "USDC", // Resolves to name: "USDC"
+  from: "0x...",
+  to: "0x...",
+  value: 1000000n,
+});
+
+// ❌ Wrong - Signature will fail!
+const { typedData } = prepare({
+  chainId: 84532,
+  token: "USDC",
+  name: "USD Coin", // Override with wrong name
+  // ...
+});
+```
+
+The `prepare()` function automatically uses the correct domain name from the registry.
 
 ## API Reference
 

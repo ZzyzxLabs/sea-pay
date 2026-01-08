@@ -2,9 +2,15 @@ import type { TokenConfig } from "../../types/registry.js";
 
 /**
  * USDC token configurations across supported chains
- * 
+ *
  * Note: These are the proxy addresses and EIP-712 domain parameters
  * for the USDC contract on each chain.
+ *
+ * **IMPORTANT**: Domain names vary by network:
+ * - Base Mainnet (8453): name = "USD Coin"
+ * - Base Sepolia (84532): name = "USDC"
+ *
+ * Always use the correct domain name for signature verification to work.
  */
 export const USDC: Record<number, TokenConfig> = {
   // Ethereum Mainnet
@@ -25,7 +31,7 @@ export const USDC: Record<number, TokenConfig> = {
     version: "2",
     decimals: 6,
   },
-  // Base Mainnet
+  // Base Mainnet (domain name: "USD Coin")
   8453: {
     symbol: "USDC",
     chainId: 8453,
@@ -34,12 +40,12 @@ export const USDC: Record<number, TokenConfig> = {
     version: "2",
     decimals: 6,
   },
-  // Base Sepolia Testnet
+  // Base Sepolia Testnet (domain name: "USDC")
   84532: {
     symbol: "USDC",
     chainId: 84532,
     verifyingContract: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-    name: "USD Coin",
+    name: "USDC",
     version: "2",
     decimals: 6,
   },
@@ -101,4 +107,3 @@ export function isUSDCSupported(chainId: number): boolean {
 export function listUSDCChains(): number[] {
   return Object.keys(USDC).map(Number);
 }
-

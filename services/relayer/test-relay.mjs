@@ -1,37 +1,28 @@
 #!/usr/bin/env node
 
 /**
- * Test script for ERC-3009 Relayer Service
+ * Simple ERC-3009 Signature Test
  *
- * Uses @seapay-ai/erc3009 package for EIP-712 signing utilities.
+ * Tests the most basic case of creating an ERC-3009 (ERC-20 transferWithAuthorization) signature.
+ * Logs all parameters and the resulting signature.
  *
  * Usage:
  *   node test-relay.mjs
  *
  * Environment variables:
- *   RELAY_BASE_URL - Base URL of the relayer (default: http://localhost:3001)
- *   TOKEN - Token contract address (default: USDC on Base Sepolia)
- *   TO - Recipient address
- *   VALUE - Amount to transfer (default: 1000000 = 1 USDC with 6 decimals)
  *   FROM_PK - Private key of the sender (required)
- *   USE_USDC_DOMAIN - Set to "true" to use USDC_Domain() helper (default: false)
- *   CHAIN_ID - Chain ID (default: 84532 for Base Sepolia)
- *   TOKEN_NAME - Token name (default: "USD Coin")
- *   TOKEN_VERSION - Token version (default: "2")
+ *   RELAY_BASE_URL - Base URL of the relayer (default: http://localhost:3001)
  */
 
-import { Wallet, verifyTypedData } from "ethers";
+import { createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "viem/chains";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import {
-  USDC_Domain,
-  message_5_minutes,
-  buildTypedData,
-  buildTypes,
-} from "@seapay-ai/erc3009";
+import { randomBytes } from "crypto";
 
-// Load root .env file if it exists (monorepo root is two levels up)
+// Load root .env file if it exists
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootEnv = resolve(__dirname, "../../.env");
@@ -51,135 +42,197 @@ try {
     }
   });
 } catch (err) {
-  // .env file doesn't exist or can't be read, use defaults
+  // .env file doesn't exist, use defaults
 }
 
-const RELAY_BASE_URL = process.env.RELAY_BASE_URL || "http://localhost:3001";
-const TOKEN = process.env.TOKEN || "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // USDC on Base Sepolia
-const TO = process.env.TO || "0x8ba1f109551bD432803012645Hac136c22C3e0";
-const VALUE = process.env.VALUE || "100000"; // 0.1 USDC (6 decimals)
 const FROM_PK = process.env.FROM_PK;
-const CHAIN_ID = parseInt(process.env.CHAIN_ID || "84532", 10); // Base Sepolia
-const TOKEN_NAME = process.env.TOKEN_NAME || "USD Coin";
-const TOKEN_VERSION = process.env.TOKEN_VERSION || "2";
+const RELAY_BASE_URL = process.env.RELAY_BASE_URL || "http://localhost:3001";
 
 if (!FROM_PK) {
-  console.error("Error: FROM_PK environment variable is required");
+  console.error("❌ Error: FROM_PK environment variable is required");
   console.error("Usage: FROM_PK=0xYourPrivateKey node test-relay.mjs");
   process.exit(1);
 }
 
-async function testRelayer() {
-  console.log("🧪 Testing ERC-3009 Relayer Service");
-  console.log(`Relay URL: ${RELAY_BASE_URL}`);
-  console.log(`Token: ${TOKEN}`);
-  console.log(`To: ${TO}`);
-  console.log(`Value: ${VALUE}`);
-  console.log("");
+async function testSimpleERC3009Signature() {
+  console.log("🧪 Simple ERC-3009 Signature Test\n");
+  console.log("=".repeat(80));
 
   try {
-    // 1. Health check
-    console.log("1️⃣  Checking health...");
-    const healthRes = await fetch(`${RELAY_BASE_URL}/health`);
-    const health = await healthRes.json();
-    console.log("✅ Health:", health);
-    console.log("");
+    // Setup wallet
+    console.log("\n📝 STEP 1: Setup Wallet");
+    console.log("-".repeat(80));
+    const privateKey = FROM_PK.startsWith("0x") ? FROM_PK : `0x${FROM_PK}`;
+    const account = privateKeyToAccount(privateKey);
+    const client = createWalletClient({
+      account,
+      chain: baseSepolia,
+      transport: http(),
+    });
 
-    // 2. Build domain and create signed authorization
-    console.log("2️⃣  Creating signed authorization...");
-    const wallet = new Wallet(FROM_PK);
-    const from = wallet.address;
-    console.log(`   From: ${from}`);
+    console.log("Wallet Address:", account.address);
 
-    // Build EIP-712 domain - use USDC_Domain() helper or build custom domain
-    const domain =
-      process.env.USE_USDC_DOMAIN === "true"
-        ? USDC_Domain()
-        : {
-            name: TOKEN_NAME,
-            version: TOKEN_VERSION,
-            chainId: CHAIN_ID,
-            verifyingContract: TOKEN.toLowerCase(),
-          };
+    // Define EIP-712 Domain
+    console.log("\n📝 STEP 2: EIP-712 Domain Parameters");
+    console.log("-".repeat(80));
+    const domain = {
+      name: "USDC",
+      version: "2",
+      chainId: 84532,
+      verifyingContract: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    };
+    console.log("Domain:", JSON.stringify(domain, null, 2));
 
-    console.log(`   Domain: ${JSON.stringify(domain)}`);
+    // Define Type Structure
+    console.log("\n📝 STEP 3: EIP-712 Type Structure");
+    console.log("-".repeat(80));
+    const types = {
+      TransferWithAuthorization: [
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "value", type: "uint256" },
+        { name: "validAfter", type: "uint256" },
+        { name: "validBefore", type: "uint256" },
+        { name: "nonce", type: "bytes32" },
+      ],
+    };
+    console.log("Types:", JSON.stringify(types, null, 2));
 
-    // Create message with 5-minute validity window using package helper
-    const value = BigInt(VALUE);
-    const message = message_5_minutes(from, TO, value);
+    // Create Message
+    console.log("\n📝 STEP 4: Message to Sign");
+    console.log("-".repeat(80));
+    const nonce = "0x" + randomBytes(32).toString("hex");
+    const currentTime = Math.floor(Date.now() / 1000);
+    const validBefore = BigInt(currentTime + 3600); // 1 hour from now
 
+    const message = {
+      from: account.address,
+      to: "0x1A6F7CbBef2AAaBa5b6689d456d3585109018592",
+      value: 1000n, // 0.001 USDC (6 decimals)
+      validAfter: 0n,
+      validBefore: validBefore,
+      nonce: nonce,
+    };
+
+    console.log("Message:");
+    console.log("  from:        ", message.from);
+    console.log("  to:          ", message.to);
+    console.log("  value:       ", message.value.toString(), "(0.001 USDC)");
+    console.log("  validAfter:  ", message.validAfter.toString());
     console.log(
-      `   Message: ${JSON.stringify({
-        ...message,
-        value: message.value.toString(),
-        validAfter: message.validAfter.toString(),
-        validBefore: message.validBefore.toString(),
-      })}`
+      "  validBefore: ",
+      message.validBefore.toString(),
+      `(${new Date(Number(validBefore) * 1000).toISOString()})`
     );
+    console.log("  nonce:       ", message.nonce);
 
-    // Sign typed data (TransferWithAuthorization per ERC-3009)
-    // Use buildTypedData to ensure the domain/message are in the exact format the contract expects
-    const typed = buildTypedData({ domain, message });
-    const signature = await wallet.signTypedData(
-      typed.domain,
-      typed.types,
-      typed.message
-    );
-    console.log("✅ Signature created");
-    console.log(`   Signature: ${signature}`);
+    // Sign the message
+    console.log("\n📝 STEP 5: Sign the Message");
+    console.log("-".repeat(80));
+    console.log("Signing with wallet:", account.address);
 
-    // Verify locally before sending
-    const recovered = verifyTypedData(
-      typed.domain,
-      typed.types,
-      typed.message,
-      signature
-    );
-    console.log(`   Recovered: ${recovered}`);
-    if (recovered.toLowerCase() !== wallet.address.toLowerCase()) {
-      throw new Error("Signature did not recover signer");
-    }
-    console.log("✅ Signature verified locally");
-    console.log("");
+    const signature = await client.signTypedData({
+      domain,
+      types,
+      primaryType: "TransferWithAuthorization",
+      message,
+    });
 
-    // 3. Relay the transaction
-    console.log("3️⃣  Relaying transaction...");
+    console.log("\n✅ SIGNATURE CREATED!");
+    console.log("Signature:", signature);
+    console.log("Length:", signature.length, "characters");
 
-    // Use typed.domain (TypedDataDomain format) for relay payload
-    // This matches what the server expects and what was used for verification
+    // Split signature into v, r, s components (as the contract expects)
+    console.log("\n📝 STEP 5b: Split Signature Components");
+    console.log("-".repeat(80));
+    const v = "0x" + signature.slice(130, 132);
+    const r = signature.slice(0, 66);
+    const s = "0x" + signature.slice(66, 130);
+
+    console.log("Signature Components (for contract call):");
+    console.log("  v:", v, `(${parseInt(v, 16)})`);
+    console.log("  r:", r);
+    console.log("  s:", s);
+
+    // Show what will be sent to the contract
+    console.log("\n📝 STEP 5c: Contract Function Call Parameters");
+    console.log("-".repeat(80));
+    console.log("transferWithAuthorization(");
+    console.log("  from:        ", message.from);
+    console.log("  to:          ", message.to);
+    console.log("  value:       ", message.value.toString());
+    console.log("  validAfter:  ", message.validAfter.toString());
+    console.log("  validBefore: ", message.validBefore.toString());
+    console.log("  nonce:       ", message.nonce);
+    console.log("  v:           ", parseInt(v, 16));
+    console.log("  r:           ", r);
+    console.log("  s:           ", s);
+    console.log(")");
+
+    // Prepare relay payload
+    console.log("\n📝 STEP 6: Prepare Relay Payload");
+    console.log("-".repeat(80));
     const relayPayload = {
-      token: TOKEN,
-      from: wallet.address,
+      token: domain.verifyingContract,
+      from: message.from,
       to: message.to,
       value: message.value.toString(),
       validAfter: message.validAfter.toString(),
       validBefore: message.validBefore.toString(),
       nonce: message.nonce,
-      signature,
-      domain: typed.domain, // Must use TypedDataDomain format, not EIP712Domain
+      signature: signature,
+      domain: domain,
     };
 
-    const relayRes = await fetch(`${RELAY_BASE_URL}/base/relay`, {
+    console.log("Relay Payload:", JSON.stringify(relayPayload, null, 2));
+
+    // Send to relayer
+    console.log("\n📝 STEP 7: Send to Relayer");
+    console.log("-".repeat(80));
+    console.log("Relayer URL:", `${RELAY_BASE_URL}/erc3009/relay`);
+
+    const relayRes = await fetch(`${RELAY_BASE_URL}/erc3009/relay`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(relayPayload),
     });
 
+    console.log("Response Status:", relayRes.status, relayRes.statusText);
+
     if (!relayRes.ok) {
       const error = await relayRes.json();
-      throw new Error(`Relay failed: ${error.error}`);
+      console.error("\n❌ Relay Error:");
+      console.error(JSON.stringify(error, null, 2));
+      throw new Error(
+        `Relay failed (${relayRes.status}): ${error.error}${
+          error.details ? ` - ${error.details}` : ""
+        }`
+      );
     }
 
     const relayResult = await relayRes.json();
-    console.log("✅ Transaction relayed!");
-    console.log(`   TX Hash: ${relayResult.txHash}`);
-    console.log("");
+    console.log("\n✅ TRANSACTION RELAYED SUCCESSFULLY!");
+    console.log("Result:", JSON.stringify(relayResult, null, 2));
+    console.log("TX Hash:", relayResult.txHash);
+    console.log(
+      "Explorer:",
+      `https://sepolia.basescan.org/tx/${relayResult.txHash}`
+    );
 
-    console.log("🎉 All tests passed!");
+    console.log("\n" + "=".repeat(80));
+    console.log("🎉 TEST COMPLETED SUCCESSFULLY!");
+    console.log("=".repeat(80));
   } catch (error) {
-    console.error("❌ Test failed:", error.message);
+    console.error("\n" + "=".repeat(80));
+    console.error("❌ TEST FAILED");
+    console.error("=".repeat(80));
+    console.error("Error:", error.message);
+    if (error.stack) {
+      console.error("\nStack trace:");
+      console.error(error.stack);
+    }
     process.exit(1);
   }
 }
 
-testRelayer();
+testSimpleERC3009Signature();

@@ -46,9 +46,18 @@ const eth = prepare({
   value: 1000000n,
 });
 
-// Base mainnet
+// Base mainnet (domain name: "USD Coin")
 const base = prepare({
   chainId: 8453,
+  token: "USDC",
+  from: "0x...",
+  to: "0x...",
+  value: 1000000n,
+});
+
+// Base Sepolia testnet (domain name: "USDC")
+const baseSepolia = prepare({
+  chainId: 84532,
   token: "USDC",
   from: "0x...",
   to: "0x...",
@@ -64,6 +73,8 @@ const arb = prepare({
   value: 1000000n,
 });
 ```
+
+**⚠️ Note:** Base Mainnet (8453) uses domain name `"USD Coin"` while Base Sepolia (84532) uses `"USDC"`. The `prepare()` function handles this automatically from the registry.
 
 ## 3. Custom Token
 
