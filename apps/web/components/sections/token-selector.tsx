@@ -90,7 +90,7 @@ export function TokenSelector({
       <button
         type='button'
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className='flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-base font-medium shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm'
+        className='flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-base font-medium shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]'
       >
         <span className='flex items-center gap-1.5'>
           {selectedOption.token === "USDC" && (
