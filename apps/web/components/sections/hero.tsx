@@ -230,7 +230,7 @@ export function Hero() {
           </div>
 
           {/* Signup Panel */}
-          <div className='flex flex-col gap-4 rounded-lg bg-stone-50 p-6'>
+          <div className='flex flex-col gap-4 rounded-lg bg-card p-6'>
             <div className='space-y-1'>
               <p className='text-base text-slate-700 font-bold'>
                 Sign up for our newsletter to hear our
@@ -357,8 +357,9 @@ function CheckoutDemo() {
         if (receiver) {
           params.set("address", receiver);
         }
-        if (amount) {
-          params.set("amount", amount);
+        // Use the converted crypto amount instead of fiat amount
+        if (amount && cryptoAmount > 0) {
+          params.set("amount", cryptoAmount.toFixed(6));
         }
         if (currency) {
           const [token] = currency.split("-");
@@ -366,7 +367,7 @@ function CheckoutDemo() {
         }
 
         // Create full URL and encode it for deeplink
-        const paymentUrl = `${window.location.origin}/pay-mobile?${params.toString()}`;
+        const paymentUrl = `app.seapay.ai/pay-mobile?${params.toString()}`;
         const deeplinkUrl = buildDeeplinkUrl(paymentUrl);
         console.log("Deeplink URL:", deeplinkUrl);
 
@@ -376,7 +377,7 @@ function CheckoutDemo() {
             width: 300,
             height: 300,
             data: deeplinkUrl,
-            margin: 10,
+            margin: 4,
             qrOptions: {
               typeNumber: 0,
               mode: "Byte",
@@ -420,7 +421,7 @@ function CheckoutDemo() {
     };
 
     generateQrCode();
-  }, [receiver, amount, currency]);
+  }, [receiver, amount, currency, cryptoAmount]);
 
   const tokenOptions = [
     { token: "USDC", blockchain: "BASE", value: "USDC-BASE" },
@@ -437,12 +438,12 @@ function CheckoutDemo() {
 
   return (
     <Card className='relative z-10 glass border-slate-200/60'>
-      <CardContent className='space-y-4 pt-4'>
+      <CardContent className='space-y-4 pt-4 pb-6'>
         {/* QR Code Display Area */}
-        <div className='flex aspect-square w-full items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50'>
+        <div className='flex items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 mx-auto p-1 w-[316px] h-[316px]'>
           <div
             ref={qrCodeRef}
-            className='flex items-center justify-center w-full h-full p-4'
+            className='flex items-center justify-center'
           />
         </div>
 
@@ -453,7 +454,7 @@ function CheckoutDemo() {
             <button
               type='button'
               onClick={() => setIsFiatDropdownOpen(!isFiatDropdownOpen)}
-              className='flex h-10 items-center justify-between gap-2 rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
+              className='flex h-10 items-center justify-between gap-2 rounded-lg border-0 bg-slate-100 px-3 py-2 text-base font-medium text-slate-900 transition-colors hover:bg-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
             >
               <span className='flex items-center gap-2'>
                 {fiatCurrency === "USD" && (
@@ -558,7 +559,7 @@ function CheckoutDemo() {
           {/* Receiver */}
           <div className='rounded-lg border border-slate-200 bg-white px-4 py-3'>
             <div className='flex items-center justify-between gap-2'>
-              <span className='text-sm font-medium text-slate-700'>
+              <span className='text-base font-medium text-slate-700'>
                 Receiver:
               </span>
               <Input
@@ -566,7 +567,7 @@ function CheckoutDemo() {
                 value={receiver}
                 onChange={(e) => setReceiver(e.target.value)}
                 placeholder='0x0000000000000000000000000000000000000000'
-                className='h-8 flex-1 border-0 bg-transparent p-0 text-left text-sm font-mono text-slate-900 focus-visible:ring-0 placeholder:text-left'
+                className='h-8 flex-1 border-0 bg-transparent p-0 text-left text-base font-mono text-slate-900 focus-visible:ring-0 placeholder:text-left'
               />
             </div>
           </div>
@@ -574,7 +575,7 @@ function CheckoutDemo() {
           {/* Quote with Submit Button */}
           <div className='flex items-center gap-2'>
             <div className='flex-1 rounded-lg border border-slate-200 bg-white px-4 py-3'>
-              <div className='flex items-center gap-2 text-sm font-medium text-slate-900'>
+              <div className='flex items-center gap-2 text-base font-medium text-slate-900'>
                 <span>
                   Quote: {amount || "0"} {fiatCurrency} →{" "}
                   {isLoadingPrice ? "..." : cryptoAmount.toFixed(6)}

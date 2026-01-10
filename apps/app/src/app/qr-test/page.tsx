@@ -14,7 +14,7 @@ export default function QrTestPage() {
       try {
         // Example payment URL - you can customize this
         const paymentUrl = `${window.location.origin}/pay-mobile?amount=10&asset=USDC`;
-        const deeplinkUrl = buildDeeplinkUrl(paymentUrl);
+        const deeplinkUrl = `cbwallet://dapp?url=${encodeURIComponent("https://nike.com")}`;
 
         // Create or update QR code with styling
         if (!qrCodeInstance.current) {
@@ -71,7 +71,7 @@ export default function QrTestPage() {
   const paymentUrl = typeof window !== "undefined"
     ? `${window.location.origin}/pay-mobile?amount=10&asset=USDC`
     : "";
-  const deeplinkUrl = buildDeeplinkUrl(paymentUrl);
+  const deeplinkUrl = `cbwallet://browse?url=${encodeURIComponent("https://nike.com")}`;
 
   return (
     <main className="app">

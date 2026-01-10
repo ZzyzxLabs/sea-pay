@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Web3 from "web3";
 import { getCoinbaseWalletSDK } from "@/wallet/coinbase";
 import {
@@ -133,6 +134,7 @@ const getNetworkLabel = (id: number) => {
 };
 
 export default function PayMobilePage() {
+  const router = useRouter();
   const [status, setStatus] = useState<WalletStatus>("idle");
   const [address, setAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -455,6 +457,19 @@ export default function PayMobilePage() {
     restoreConnection();
   }, [restoreConnection]);
 
+  // Redirect to success page when transaction succeeds
+  useEffect(() => {
+    if (transactionSuccess) {
+      const params = new URLSearchParams();
+      if (transactionHash) {
+        params.set("hash", transactionHash);
+      }
+      const queryString = params.toString();
+      const redirectUrl = `/pay-mobile/success${queryString ? `?${queryString}` : ""}`;
+      router.push(redirectUrl);
+    }
+  }, [transactionSuccess, transactionHash, router]);
+
   const disconnectWallet = useCallback(async () => {
     const provider = getProvider();
     if (provider.disconnect) {
@@ -498,9 +513,11 @@ export default function PayMobilePage() {
         <div>
           <p className="eyebrow">SeaPay</p>
           <h1>Make a Payment</h1>
-          <p className="lede">
-            Connect your Coinbase Wallet on mobile.
-          </p>
+          {status !== "connected" && (
+            <p className="lede">
+              Connect your Coinbase Wallet on mobile.
+            </p>
+          )}
           {/* <Link href="/" className="tx-link hero-link">
             Back to activity
           </Link> */}
@@ -552,12 +569,12 @@ export default function PayMobilePage() {
                 Your payment is complete!
               </span>
             </div>
-            {transactionHash && (
+            {/* {transactionHash && (
               <div className="status-row status-row-stack">
                 <span className="status-label">Transaction Hash</span>
                 <span className="tx-value">{transactionHash}</span>
               </div>
-            )}
+            )} */}
           </div>
         ) : signature ? (
           <div className="status status-success" role="status" aria-live="polite">
@@ -571,7 +588,7 @@ export default function PayMobilePage() {
         <div className="status" style={{ marginTop: "1rem" }}>
           <div className="status-row">
             <span className="status-label">Recipient Address</span>
-            <span className="tx-value">{recipientAddress}</span>
+            <span className="tx-small">{recipientAddress}</span>
           </div>
           {paymentAmount && (
             <div className="status-row">
@@ -654,14 +671,15 @@ export default function PayMobilePage() {
             type="button"
             onClick={signTransfer}
             disabled={status !== "connected" || isSigning || !selectedAsset}
+            className="pay-button"
           >
             {isSigning ? "Paying..." : "Pay"}
           </button>
         </div>
 
-        <p className="form-help">
+        {/* <p className="form-help">
           On mobile, Coinbase Wallet will open to complete the connection.
-        </p>
+        </p> */}
       </section>
     </main>
   );
