@@ -366,7 +366,7 @@ function CheckoutDemo() {
         }
 
         // Create full URL and encode it for deeplink
-        const paymentUrl = `${window.location.origin}/pay-mobile?${params.toString()}`;
+        const paymentUrl = `app.seapay.ai/pay-mobile?${params.toString()}`;
         const deeplinkUrl = buildDeeplinkUrl(paymentUrl);
         console.log("Deeplink URL:", deeplinkUrl);
 
