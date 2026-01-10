@@ -688,4 +688,13 @@ button.ghost {
   .status-row span:last-child {
     text-align: left;
   }
+
+  .pay-button {
+    width: 100% !important;
+  }
+}
+
+.pay-button {
+  background: linear-gradient(135deg, var(--accent), #6fe6d7) !important;
+  color: var(--ink) !important;
 }

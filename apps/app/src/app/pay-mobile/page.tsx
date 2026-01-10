@@ -654,6 +654,7 @@ export default function PayMobilePage() {
             type="button"
             onClick={signTransfer}
             disabled={status !== "connected" || isSigning || !selectedAsset}
+            className="pay-button"
           >
             {isSigning ? "Paying..." : "Pay"}
           </button>
