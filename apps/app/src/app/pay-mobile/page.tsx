@@ -571,7 +571,7 @@ export default function PayMobilePage() {
         <div className="status" style={{ marginTop: "1rem" }}>
           <div className="status-row">
             <span className="status-label">Recipient Address</span>
-            <span className="tx-value">{recipientAddress}</span>
+            <span className="tx-small">{recipientAddress}</span>
           </div>
           {paymentAmount && (
             <div className="status-row">

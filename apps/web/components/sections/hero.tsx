@@ -357,8 +357,9 @@ function CheckoutDemo() {
         if (receiver) {
           params.set("address", receiver);
         }
-        if (amount) {
-          params.set("amount", amount);
+        // Use the converted crypto amount instead of fiat amount
+        if (amount && cryptoAmount > 0) {
+          params.set("amount", cryptoAmount.toFixed(6));
         }
         if (currency) {
           const [token] = currency.split("-");
@@ -420,7 +421,7 @@ function CheckoutDemo() {
     };
 
     generateQrCode();
-  }, [receiver, amount, currency]);
+  }, [receiver, amount, currency, cryptoAmount]);
 
   const tokenOptions = [
     { token: "USDC", blockchain: "BASE", value: "USDC-BASE" },
