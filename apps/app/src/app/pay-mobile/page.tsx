@@ -498,9 +498,11 @@ export default function PayMobilePage() {
         <div>
           <p className="eyebrow">SeaPay</p>
           <h1>Make a Payment</h1>
-          <p className="lede">
-            Connect your Coinbase Wallet on mobile.
-          </p>
+          {status !== "connected" && (
+            <p className="lede">
+              Connect your Coinbase Wallet on mobile.
+            </p>
+          )}
           {/* <Link href="/" className="tx-link hero-link">
             Back to activity
           </Link> */}
@@ -660,9 +662,9 @@ export default function PayMobilePage() {
           </button>
         </div>
 
-        <p className="form-help">
+        {/* <p className="form-help">
           On mobile, Coinbase Wallet will open to complete the connection.
-        </p>
+        </p> */}
       </section>
     </main>
   );
