@@ -1,21 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import {
   buildTypedData,
   buildMessage,
-  resolveDomain,
   nowPlusSeconds,
+  type TypedData
 } from "@seapay-ai/erc3009";
-
-type Chain = {
-  id: number;
-  name: string;
-  label: string;
-};
+import { chains } from "@/lib/web3/chains";
 
 type Asset = {
   symbol: string;
@@ -31,15 +25,6 @@ type Asset = {
 type ChainAssets = {
   [chainId: number]: Asset[];
 };
-
-
-const SUPPORTED_CHAINS: Chain[] = [
-  { id: 1, name: "ethereum", label: "Ethereum Mainnet" },
-  { id: 8453, name: "base", label: "Base Mainnet" },
-  { id: 84532, name: "base-sepolia", label: "Base Sepolia" },
-  { id: 11155111, name: "sepolia", label: "Ethereum Sepolia" },
-  { id: 80002, name: "amoy", label: "Polygon Testnet (Amoy)" },
-];
 
 const CHAIN_ASSETS: ChainAssets = {
   1: [
@@ -78,45 +63,38 @@ const CHAIN_ASSETS: ChainAssets = {
       domain: { name: "USDC", version: "2" },
     },
   ],
+  80002: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582",
+      decimals: 6,
+      domain: { name: "USD Coin", version: "2" },
+    },
+  ],
+  137: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+      decimals: 6,
+      domain: { name: "USD Coin", version: "2" },
+    },
+  ],
 };
-
-const EIP712_DOMAIN_TYPES = [
-  { name: "name", type: "string" },
-  { name: "version", type: "string" },
-  { name: "chainId", type: "uint256" },
-  { name: "verifyingContract", type: "address" },
-];
 
 const DEFAULT_USDC_RECIPIENT =
   "0xc3FcEF45C5a450D59E5F917Ed14A747649dbb360";
 const DEFAULT_USDC_AMOUNT = BigInt("100");
-
-const getNetworkLabel = (id: number) => {
-  if (id === 1) {
-    return "Ethereum Mainnet";
-  }
-  if (id === 8453) {
-    return "Base Mainnet";
-  }
-  if (id === 84532) {
-    return "Base Sepolia";
-  }
-  if (id === 11155111) {
-    return "Ethereum Sepolia";
-  }
-  if (id === 80002) {
-    return "polygon Testnet (Amoy)"
-  }
-  return `Chain ${id}`;
-};
 
 export default function PayMobilePage() {
   const router = useRouter();
   const { address, isConnected, connector } = useAccount();
   const { connect, connectors, isPending, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
-  const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
+  const { data: walletClient } = useWalletClient();
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
 
   const [error, setError] = useState<string | null>(null);
   const [selectedChainId, setSelectedChainId] = useState<number>(84532); // Default to Base Sepolia
@@ -129,6 +107,7 @@ export default function PayMobilePage() {
   const [recipientAddress, setRecipientAddress] = useState<string>(DEFAULT_USDC_RECIPIENT);
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const lastSwitchedChainIdRef = useRef<number | null>(null);
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -161,7 +140,33 @@ export default function PayMobilePage() {
     } else {
       setSelectedAsset(null);
     }
+    // Reset transaction success state when chain changes (new transaction context)
+    setTransactionSuccess(false);
+    setTransactionHash(null);
+    setSignature(null);
   }, [selectedChainId]);
+
+  // Switch chain when selectedChainId changes (if wallet is connected)
+  useEffect(() => {
+    // Only switch if:
+    // 1. Wallet is connected
+    // 2. Selected chain differs from active chain
+    // 3. Not already switching
+    // 4. We haven't already initiated a switch to this chain (prevents loops)
+    if (
+      isConnected &&
+      selectedChainId !== chainId &&
+      !isSwitchingChain &&
+      lastSwitchedChainIdRef.current !== selectedChainId
+    ) {
+      lastSwitchedChainIdRef.current = selectedChainId;
+      switchChain({ chainId: selectedChainId });
+    }
+    // Reset the ref when chainId actually matches selectedChainId (switch completed)
+    if (selectedChainId === chainId) {
+      lastSwitchedChainIdRef.current = null;
+    }
+  }, [isConnected, selectedChainId, chainId, switchChain, isSwitchingChain]);
 
   // Sync error state with connect error
   useEffect(() => {
@@ -187,13 +192,6 @@ export default function PayMobilePage() {
         throw new Error("Wallet client is not available.");
       }
 
-      // // 1. Resolve domain from registry
-      // const domain = resolveDomain({
-      //   chainId: selectedChainId,
-      //   token: "USDC",
-      // });
-
-      // 2. Build message
       const message = buildMessage({
         from: address,
         to: to,
@@ -201,56 +199,35 @@ export default function PayMobilePage() {
         validBefore: nowPlusSeconds(300), // Valid for 5 minutes
       });
 
-      // 3. Build typed data
       const {
         domain,
         types,
         message: msg,
       } = buildTypedData({
-        chainId: selectedChainId, // Base mainnet
-        token: "USDC",
+        chainId: chainId, // Use active chainId to match walletClient's chain
+        token: asset.symbol,
         message,
       });
-      // console.log("Signing payload:", JSON.stringify(typedData));
-      console.log("With wallet address:", address);
-
-      // Prepare types with EIP712Domain
-      // const types = {
-      //   EIP712Domain: EIP712_DOMAIN_TYPES,
-      //   ...typedData.types,
-      // };
-
-      // // Convert domain for viem (chainId as number)
-      // const viemDomain = {
-      //   name: typedData.domain.name || "",
-      //   version: typedData.domain.version || "",
-      //   chainId: Number(typedData.domain.chainId),
-      //   verifyingContract: typedData.domain.verifyingContract as `0x${string}`,
-      // };
-
-      // Convert message values (viem accepts bigints but we'll convert to match expected format)
-      // const viemMessage = {
-      //   from: typedData.message.from,
-      //   to: typedData.message.to,
-      //   value: typedData.message.value,
-      //   validAfter: typedData.message.validAfter,
-      //   validBefore: typedData.message.validBefore,
-      //   nonce: typedData.message.nonce,
-      // };
+      console.log("chainId", chainId);
 
       const signature = await walletClient.signTypedData({
-        domain: viemDomain,
+        domain: domain as any,
         types: types as any,
-        primaryType: TRANSFER_WITH_AUTHORIZATION_TYPE,
-        message: viemMessage,
+        primaryType: "TransferWithAuthorization",
+        message: msg as any,
       });
 
+      const typedData: TypedData = {
+        domain: domain,
+        types: types,
+        primaryType: "TransferWithAuthorization",
+        message: msg,
+      }
       console.log("Received signature:", signature);
-      console.log("Domain:", JSON.stringify(domain));
 
-      return { signature, domain, message };
+      return { typedData, signature };
     },
-    [address, walletClient, selectedChainId]
+    [address, walletClient, chainId]
   );
 
   const signTransfer = useCallback(async () => {
@@ -264,17 +241,38 @@ export default function PayMobilePage() {
       ? BigInt(Math.floor(parseFloat(paymentAmount) * Math.pow(10, selectedAsset.decimals)))
       : DEFAULT_USDC_AMOUNT;
 
+
+    console.log("selectedChainId", selectedChainId);  
     setIsSigning(true);
     setSignatureError(null);
 
     try {
-      const { signature, domain, message } = await signTransferWithAuthorization(
+      // Use selectedChainId for signing (chain switching happens automatically in useEffect)
+      const { typedData, signature } = await signTransferWithAuthorization(
         selectedAsset,
         recipientAddress,
         amountToSend
       );
 
       setSignature(signature);
+
+      // Convert BigInt values to strings for JSON serialization
+      const serializeTypedData = (data: any): any => {
+        if (typeof data === "bigint") {
+          return data.toString();
+        }
+        if (Array.isArray(data)) {
+          return data.map(serializeTypedData);
+        }
+        if (data && typeof data === "object") {
+          const serialized: any = {};
+          for (const key in data) {
+            serialized[key] = serializeTypedData(data[key]);
+          }
+          return serialized;
+        }
+        return data;
+      };
 
       // Send the signed transfer to the relay API
       const relayResponse = await fetch("https://sea-pay.onrender.com/erc3009/relay", {
@@ -283,20 +281,8 @@ export default function PayMobilePage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          token: domain.verifyingContract,
-          from: message.from,
-          to: message.to,
-          value: message.value.toString(),
-          validAfter: message.validAfter.toString(),
-          validBefore: message.validBefore.toString(),
-          nonce: message.nonce,
-          signature,
-          domain: {
-            name: domain.name,
-            version: domain.version,
-            chainId: domain.chainId.toString(),
-            verifyingContract: domain.verifyingContract,
-          },
+          typedData: serializeTypedData(typedData),
+          signature: signature,
         }),
       });
 
@@ -483,9 +469,9 @@ export default function PayMobilePage() {
                 fontSize: "0.9rem",
               }}
             >
-              {SUPPORTED_CHAINS.map((chain) => (
+              {chains.map((chain) => (
                 <option key={chain.id} value={chain.id}>
-                  {chain.label}
+                  {chain.name}
                 </option>
               ))}
             </select>
@@ -539,10 +525,10 @@ export default function PayMobilePage() {
               <button
                 type="button"
                 onClick={signTransfer}
-                disabled={!isConnected || isSigning || !selectedAsset}
+                disabled={!isConnected || isSigning || isSwitchingChain || !selectedAsset}
                 className="pay-button"
               >
-                {isSigning ? "Processing..." : "Pay"}
+                {isSwitchingChain ? "Switching Chain..." : isSigning ? "Processing..." : "Pay"}
               </button>
             </>
           )}
