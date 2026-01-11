@@ -1,37 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Web3 from "web3";
-import { getCoinbaseWalletSDK } from "@/wallet/coinbase";
+import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import {
-  resolveDomain,
-  buildMessage,
   buildTypedData,
-  erc3009,
-  randomNonce,
-  TRANSFER_WITH_AUTHORIZATION_TYPE
+  buildMessage,
+  nowPlusSeconds,
+  type TypedData
 } from "@seapay-ai/erc3009";
-
-type WalletStatus = "idle" | "connecting" | "connected" | "error";
-
-type Eip1193Provider = {
-  request: (args: {
-    method: string;
-    params?: unknown[] | Record<string, unknown>;
-  }) => Promise<unknown>;
-  on?: (event: string, handler: (...args: any[]) => void) => void;
-  removeListener?: (event: string, handler: (...args: any[]) => void) => void;
-  disconnect?: () => void | Promise<void>;
-  close?: () => void | Promise<void>;
-};
-
-type Chain = {
-  id: number;
-  name: string;
-  label: string;
-};
+import { chains } from "@/lib/web3/chains";
 
 type Asset = {
   symbol: string;
@@ -47,22 +25,6 @@ type Asset = {
 type ChainAssets = {
   [chainId: number]: Asset[];
 };
-
-const DEFAULT_CHAIN_ID = 1;
-
-const parsedChainId = Number(process.env.NEXT_PUBLIC_COINBASE_CHAIN_ID);
-const chainId =
-  Number.isFinite(parsedChainId) && parsedChainId > 0
-    ? parsedChainId
-    : DEFAULT_CHAIN_ID;
-
-const SUPPORTED_CHAINS: Chain[] = [
-  { id: 1, name: "ethereum", label: "Ethereum Mainnet" },
-  { id: 8453, name: "base", label: "Base Mainnet" },
-  { id: 84532, name: "base-sepolia", label: "Base Sepolia" },
-  { id: 11155111, name: "sepolia", label: "Ethereum Sepolia" },
-  { id: 80002, name: "amoy", label: "Polygon Testnet (Amoy)" },
-];
 
 const CHAIN_ASSETS: ChainAssets = {
   1: [
@@ -101,44 +63,40 @@ const CHAIN_ASSETS: ChainAssets = {
       domain: { name: "USDC", version: "2" },
     },
   ],
+  80002: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582",
+      decimals: 6,
+      domain: { name: "USD Coin", version: "2" },
+    },
+  ],
+  137: [
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+      decimals: 6,
+      domain: { name: "USD Coin", version: "2" },
+    },
+  ],
 };
-
-const EIP712_DOMAIN_TYPES = [
-  { name: "name", type: "string" },
-  { name: "version", type: "string" },
-  { name: "chainId", type: "uint256" },
-  { name: "verifyingContract", type: "address" },
-];
 
 const DEFAULT_USDC_RECIPIENT =
   "0xc3FcEF45C5a450D59E5F917Ed14A747649dbb360";
 const DEFAULT_USDC_AMOUNT = BigInt("100");
 
-const getNetworkLabel = (id: number) => {
-  if (id === 1) {
-    return "Ethereum Mainnet";
-  }
-  if (id === 8453) {
-    return "Base Mainnet";
-  }
-  if (id === 84532) {
-    return "Base Sepolia";
-  }
-  if (id === 11155111) {
-    return "Ethereum Sepolia";
-  }
-  if (id === 80002) {
-    return "polygon Testnet (Amoy)"
-  }
-  return `Chain ${id}`;
-};
-
 export default function PayMobilePage() {
   const router = useRouter();
-  const [status, setStatus] = useState<WalletStatus>("idle");
-  const [address, setAddress] = useState<string | null>(null);
+  const { address, isConnected, connector } = useAccount();
+  const { connect, connectors, isPending, error: connectError } = useConnect();
+  const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  const { data: walletClient } = useWalletClient();
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
+
   const [error, setError] = useState<string | null>(null);
-  const [activeChainId, setActiveChainId] = useState(chainId);
   const [selectedChainId, setSelectedChainId] = useState<number>(84532); // Default to Base Sepolia
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
@@ -148,9 +106,8 @@ export default function PayMobilePage() {
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [recipientAddress, setRecipientAddress] = useState<string>(DEFAULT_USDC_RECIPIENT);
   const [paymentAmount, setPaymentAmount] = useState<string>("");
-  const providerRef = useRef<Eip1193Provider | null>(null);
-  const web3Ref = useRef<Web3 | null>(null);
-  const listenersAttachedRef = useRef(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const lastSwitchedChainIdRef = useRef<number | null>(null);
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -183,83 +140,94 @@ export default function PayMobilePage() {
     } else {
       setSelectedAsset(null);
     }
+    // Reset transaction success state when chain changes (new transaction context)
+    setTransactionSuccess(false);
+    setTransactionHash(null);
+    setSignature(null);
   }, [selectedChainId]);
 
-  const getProvider = useCallback(() => {
-    if (!providerRef.current) {
-      const sdk = getCoinbaseWalletSDK();
-      if (!sdk) {
-        throw new Error("Coinbase Wallet SDK is only available in the browser.");
-      }
-      providerRef.current = sdk.getProvider() as Eip1193Provider;
+  // Switch chain when selectedChainId changes (if wallet is connected)
+  useEffect(() => {
+    // Only switch if:
+    // 1. Wallet is connected
+    // 2. Selected chain differs from active chain
+    // 3. Not already switching
+    // 4. We haven't already initiated a switch to this chain (prevents loops)
+    if (
+      isConnected &&
+      selectedChainId !== chainId &&
+      !isSwitchingChain &&
+      lastSwitchedChainIdRef.current !== selectedChainId
+    ) {
+      lastSwitchedChainIdRef.current = selectedChainId;
+      switchChain({ chainId: selectedChainId });
     }
-    return providerRef.current;
-  }, []);
+    // Reset the ref when chainId actually matches selectedChainId (switch completed)
+    if (selectedChainId === chainId) {
+      lastSwitchedChainIdRef.current = null;
+    }
+  }, [isConnected, selectedChainId, chainId, switchChain, isSwitchingChain]);
+
+  // Sync error state with connect error
+  useEffect(() => {
+    if (connectError) {
+      setError(connectError.message);
+    }
+  }, [connectError]);
+
+  // Clear error when account changes (user switched accounts)
+  useEffect(() => {
+    if (isConnected && address) {
+      setError(null);
+    }
+  }, [isConnected, address]);
 
   const signTransferWithAuthorization = useCallback(
     async (asset: Asset, to: string, value: bigint) => {
-      const provider = getProvider();
-      const walletAddress = address ?? web3Ref.current?.eth.defaultAccount;
-
-      if (typeof walletAddress !== "string") {
+      if (!address) {
         throw new Error("Wallet is not connected.");
       }
 
-      // 1. Resolve domain from registry
-      const domain = resolveDomain({
-        chainId: selectedChainId,
-        token: "USDC",
-      });
-
-      // 2. Build message
-      const message = buildMessage({
-        from: walletAddress,
-        to: to,
-        value: value,
-        validAfter: 0,
-        validBefore: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
-        nonce: randomNonce(),
-      });
-
-      
-      // 3. Build typed data
-      const typedData = buildTypedData({ domain, message });
-      const payload = {
-        domain: typedData.domain,
-        types: {
-          EIP712Domain: EIP712_DOMAIN_TYPES,
-          ...typedData.types,
-        },
-        primaryType: TRANSFER_WITH_AUTHORIZATION_TYPE,
-        message: {
-          ...typedData.message,
-          value: typedData.message.value.toString(),
-          validAfter: typedData.message.validAfter.toString(),
-          validBefore: typedData.message.validBefore.toString(),
-        },
-      };
-
-      console.log("Signing payload:", JSON.stringify(payload));
-      console.log("With wallet address:", walletAddress);
-
-      const signature = await provider.request({
-        method: "eth_signTypedData_v4",
-        params: [walletAddress, payload],
-      });
-      
-
-      console.log("Received signature:", signature);
-
-      if (typeof signature !== "string") {
-        console.error("Invalid signature response:", signature);
-        throw new Error("Unexpected signature response.");
+      if (!walletClient) {
+        throw new Error("Wallet client is not available.");
       }
 
-      console.log("Domain:", JSON.stringify(domain));
+      const message = buildMessage({
+        from: address,
+        to: to,
+        value: value,
+        validBefore: nowPlusSeconds(300), // Valid for 5 minutes
+      });
 
-      return { signature, domain, message };
+      const {
+        domain,
+        types,
+        message: msg,
+      } = buildTypedData({
+        chainId: chainId, // Use active chainId to match walletClient's chain
+        token: asset.symbol,
+        message,
+      });
+      console.log("chainId", chainId);
+
+      const signature = await walletClient.signTypedData({
+        domain: domain as any,
+        types: types as any,
+        primaryType: "TransferWithAuthorization",
+        message: msg as any,
+      });
+
+      const typedData: TypedData = {
+        domain: domain,
+        types: types,
+        primaryType: "TransferWithAuthorization",
+        message: msg,
+      }
+      console.log("Received signature:", signature);
+
+      return { typedData, signature };
     },
-    [address, getProvider, selectedChainId]
+    [address, walletClient, chainId]
   );
 
   const signTransfer = useCallback(async () => {
@@ -273,17 +241,38 @@ export default function PayMobilePage() {
       ? BigInt(Math.floor(parseFloat(paymentAmount) * Math.pow(10, selectedAsset.decimals)))
       : DEFAULT_USDC_AMOUNT;
 
+
+    console.log("selectedChainId", selectedChainId);  
     setIsSigning(true);
     setSignatureError(null);
 
     try {
-      const { signature, domain, message } = await signTransferWithAuthorization(
+      // Use selectedChainId for signing (chain switching happens automatically in useEffect)
+      const { typedData, signature } = await signTransferWithAuthorization(
         selectedAsset,
         recipientAddress,
         amountToSend
       );
 
       setSignature(signature);
+
+      // Convert BigInt values to strings for JSON serialization
+      const serializeTypedData = (data: any): any => {
+        if (typeof data === "bigint") {
+          return data.toString();
+        }
+        if (Array.isArray(data)) {
+          return data.map(serializeTypedData);
+        }
+        if (data && typeof data === "object") {
+          const serialized: any = {};
+          for (const key in data) {
+            serialized[key] = serializeTypedData(data[key]);
+          }
+          return serialized;
+        }
+        return data;
+      };
 
       // Send the signed transfer to the relay API
       const relayResponse = await fetch("https://sea-pay.onrender.com/erc3009/relay", {
@@ -292,20 +281,8 @@ export default function PayMobilePage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          token: domain.verifyingContract,
-          from: message.from,
-          to: message.to,
-          value: message.value.toString(),
-          validAfter: message.validAfter.toString(),
-          validBefore: message.validBefore.toString(),
-          nonce: message.nonce,
-          signature,
-          domain: {
-            name: domain.name,
-            version: domain.version,
-            chainId: domain.chainId.toString(),
-            verifyingContract: domain.verifyingContract,
-          },
+          typedData: serializeTypedData(typedData),
+          signature: signature,
         }),
       });
 
@@ -334,128 +311,23 @@ export default function PayMobilePage() {
     }
   }, [signTransferWithAuthorization, selectedAsset, recipientAddress, paymentAmount]);
 
-  const handleAccountsChanged = useCallback((accounts: string[]) => {
-    const primary = accounts?.[0] ?? null;
-    setAddress(primary);
-
-    if (primary) {
-      if (web3Ref.current) {
-        web3Ref.current.eth.defaultAccount = primary;
-      }
-      setStatus("connected");
-      setError(null);
-    } else {
-      setStatus("idle");
-    }
-  }, []);
-
-  const handleChainChanged = useCallback((nextChainId: string) => {
-    const parsed = Number.parseInt(nextChainId, 10);
-    if (Number.isFinite(parsed)) {
-      setActiveChainId(parsed);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (status !== "connected") {
-      return;
-    }
-
-    const provider = providerRef.current;
-    if (!provider?.on || listenersAttachedRef.current) {
-      return;
-    }
-
-    provider.on("accountsChanged", handleAccountsChanged);
-    provider.on("chainChanged", handleChainChanged);
-    listenersAttachedRef.current = true;
-
-    return () => {
-      provider.removeListener?.("accountsChanged", handleAccountsChanged);
-      provider.removeListener?.("chainChanged", handleChainChanged);
-      listenersAttachedRef.current = false;
-    };
-  }, [handleAccountsChanged, handleChainChanged, status]);
-
-  const connectWallet = useCallback(async () => {
-    setStatus("connecting");
+  const handleConnectWallet = useCallback((connectorId: string) => {
     setError(null);
-
-    try {
-      const provider = getProvider();
-
-      if (!web3Ref.current) {
-        web3Ref.current = new Web3(provider as any);
-      }
-
-      const response = await provider.request({
-        method: "eth_requestAccounts",
-      });
-      const accounts = response as string[];
-      const primary = accounts?.[0];
-
-      if (!primary) {
-        throw new Error("No accounts returned from Coinbase Wallet.");
-      }
-
-      web3Ref.current.eth.defaultAccount = primary;
-      setAddress(primary);
-
-      const chainResponse = await provider.request({ method: "eth_chainId" });
-      if (typeof chainResponse === "string") {
-        const parsed = Number.parseInt(chainResponse, 16);
-        if (Number.isFinite(parsed)) {
-          setActiveChainId(parsed);
-        }
-      }
-
-      setStatus("connected");
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to connect to Coinbase Wallet.";
-      setError(message);
-      setStatus("error");
+    const connector = connectors.find((c) => c.uid === connectorId || c.id === connectorId);
+    if (connector) {
+      connect({ connector });
+      setShowWalletModal(false);
+    } else {
+      setError(`Wallet connector not found.`);
     }
-  }, [getProvider]);
+  }, [connectors, connect]);
 
-  const restoreConnection = useCallback(async () => {
-    try {
-      const provider = getProvider();
-
-      if (!web3Ref.current) {
-        web3Ref.current = new Web3(provider as any);
-      }
-
-      const response = await provider.request({ method: "eth_accounts" });
-      const accounts = response as string[];
-      const primary = accounts?.[0];
-
-      if (!primary) {
-        return;
-      }
-
-      web3Ref.current.eth.defaultAccount = primary;
-      setAddress(primary);
-      setStatus("connected");
-      setError(null);
-
-      const chainResponse = await provider.request({ method: "eth_chainId" });
-      if (typeof chainResponse === "string") {
-        const parsed = Number.parseInt(chainResponse, 16);
-        if (Number.isFinite(parsed)) {
-          setActiveChainId(parsed);
-        }
-      }
-    } catch {
-      // Ignore restore errors and let the user connect manually.
-    }
-  }, [getProvider]);
-
-  useEffect(() => {
-    restoreConnection();
-  }, [restoreConnection]);
+  const disconnectWallet = useCallback(() => {
+    disconnect();
+    setSignature(null);
+    setSignatureError(null);
+    setError(null);
+  }, [disconnect]);
 
   // Redirect to success page when transaction succeeds
   useEffect(() => {
@@ -470,42 +342,25 @@ export default function PayMobilePage() {
     }
   }, [transactionSuccess, transactionHash, router]);
 
-  const disconnectWallet = useCallback(async () => {
-    const provider = getProvider();
-    if (provider.disconnect) {
-      await provider.disconnect();
-    }
-    setAddress(null);
-    setActiveChainId(chainId);
-    setStatus("idle");
-    setError(null);
-    setSignature(null);
-    setSignatureError(null);
-  }, [getProvider]);
+  const statusLabel = isPending
+    ? "Connecting"
+    : isConnected
+      ? "Connected"
+      : error || connectError
+        ? "Error"
+        : "Not connected";
 
-  const statusLabel = (() => {
-    switch (status) {
-      case "connecting":
-        return "Connecting";
-      case "connected":
-        return "Connected";
-      case "error":
-        return "Error";
-      default:
-        return "Not connected";
-    }
-  })();
+  const statusClass = isConnected
+    ? "status-success"
+    : error || connectError
+      ? "status-error"
+      : "";
 
-  const statusClass =
-    status === "connected"
-      ? "status-success"
-      : status === "error"
-        ? "status-error"
-        : "";
-  const shortAddress =
-    status === "connected" && address
-      ? `${address.slice(0, 6)}...${address.slice(-4)}`
-      : null;
+  const shortAddress = isConnected && address
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : null;
+
+  const displayError = error || connectError?.message;
 
   return (
     <main className="app">
@@ -513,9 +368,9 @@ export default function PayMobilePage() {
         <div>
           <p className="eyebrow">SeaPay</p>
           <h1>Make a Payment</h1>
-          {status !== "connected" && (
+          {!isConnected && (
             <p className="lede">
-              Connect your Coinbase Wallet on mobile.
+              Connect your wallet to make a payment.
             </p>
           )}
           {/* <Link href="/" className="tx-link hero-link">
@@ -543,11 +398,11 @@ export default function PayMobilePage() {
       </header>
 
       <section className="panel">
-        {error ? (
+        {displayError ? (
           <div className="status status-error" role="status" aria-live="polite">
             <div className="status-row status-row-stack">
               <span className="status-label">Error</span>
-              <span className="status-message">{error}</span>
+              <span className="status-message">{displayError}</span>
             </div>
           </div>
         ) : null}
@@ -614,9 +469,9 @@ export default function PayMobilePage() {
                 fontSize: "0.9rem",
               }}
             >
-              {SUPPORTED_CHAINS.map((chain) => (
+              {chains.map((chain) => (
                 <option key={chain.id} value={chain.id}>
-                  {chain.label}
+                  {chain.name}
                 </option>
               ))}
             </select>
@@ -650,32 +505,123 @@ export default function PayMobilePage() {
         </div>
 
         <div className="actions">
-          <button
-            type="button"
-            onClick={connectWallet}
-            disabled={status === "connecting" || status === "connected"}
-          >
-            {status === "connecting"
-              ? "Connecting..."
-              : "Connect Coinbase Wallet"}
-          </button>
-          <button
-            type="button"
-            onClick={disconnectWallet}
-            disabled={status !== "connected"}
-            className="secondary"
-          >
-            Disconnect
-          </button>
-          <button
-            type="button"
-            onClick={signTransfer}
-            disabled={status !== "connected" || isSigning || !selectedAsset}
-            className="pay-button"
-          >
-            {isSigning ? "Paying..." : "Pay"}
-          </button>
+          {!isConnected ? (
+            <button
+              type="button"
+              onClick={() => setShowWalletModal(true)}
+              disabled={isPending}
+            >
+              Connect Wallet
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={disconnectWallet}
+                className="secondary"
+              >
+                Disconnect
+              </button>
+              <button
+                type="button"
+                onClick={signTransfer}
+                disabled={!isConnected || isSigning || isSwitchingChain || !selectedAsset}
+                className="pay-button"
+              >
+                {isSwitchingChain ? "Switching Chain..." : isSigning ? "Processing..." : "Pay"}
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Wallet Selection Modal */}
+        {showWalletModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+            onClick={() => setShowWalletModal(false)}
+          >
+            <div
+              style={{
+                backgroundColor: "white",
+                borderRadius: "8px",
+                padding: "1.5rem",
+                maxWidth: "400px",
+                width: "90%",
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 style={{ margin: "0 0 1rem 0", fontSize: "1.25rem" }}>
+                Connect Wallet
+              </h2>
+              <p style={{ margin: "0 0 1.5rem 0", color: "#666", fontSize: "0.9rem" }}>
+                Choose a wallet to connect
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {connectors.length > 0 ? (
+                  connectors.map((connector) => (
+                    <button
+                      key={connector.uid}
+                      type="button"
+                      onClick={() => handleConnectWallet(connector.uid)}
+                      disabled={isPending}
+                      style={{
+                        padding: "0.75rem 1rem",
+                        borderRadius: "6px",
+                        border: "1px solid #e0e0e0",
+                        backgroundColor: "white",
+                        cursor: isPending ? "not-allowed" : "pointer",
+                        fontSize: "1rem",
+                        textAlign: "left",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isPending) {
+                          e.currentTarget.style.backgroundColor = "#f5f5f5";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "white";
+                      }}
+                    >
+                      {connector.name}
+                    </button>
+                  ))
+                ) : (
+                  <p style={{ color: "#666", fontSize: "0.9rem", textAlign: "center", padding: "1rem" }}>
+                    No wallet connectors available
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWalletModal(false)}
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.5rem 1rem",
+                  borderRadius: "6px",
+                  border: "1px solid #e0e0e0",
+                  backgroundColor: "white",
+                  cursor: "pointer",
+                  width: "100%",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* <p className="form-help">
           On mobile, Coinbase Wallet will open to complete the connection.
