@@ -19,7 +19,7 @@
     "openapi:bundle": "swagger-cli bundle -o openapi.bundle.yaml openapi.yaml"
   },
   "dependencies": {
-    "@seapay-ai/erc3009": "^0.2.5",
+    "@seapay-ai/erc3009": "^0.2.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "ethers": "^6.16.0",
