@@ -238,8 +238,8 @@ importers:
   services/relayer:
     dependencies:
       '@seapay-ai/erc3009':
-        specifier: ^0.2.2
-        version: 0.2.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+        specifier: ^0.2.5
+        version: 0.2.5(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -1253,8 +1253,8 @@ packages:
   '@seapay-ai/erc3009@0.1.1':
     resolution: {integrity: sha512-Oc0tmGAVdEDcBlmAtjNr7ORgpzW8400xEIv3gJh/SVIdni6arCy1ma8WnHePyF9yf12MU/mBV7QYpLJQ+KnuLg==}
 
-  '@seapay-ai/erc3009@0.2.2':
-    resolution: {integrity: sha512-RZSyv9HOrlorNBAlXOMoySDW1VuGDWSvkRVao8RXLOf0JssmPof/9n2zwvjcMULirHCJYj7JuxXkABw+NemKxg==}
+  '@seapay-ai/erc3009@0.2.5':
+    resolution: {integrity: sha512-Wz3CYNIeZFrli66B9plAlY08i5qUjWXoVyeUAfLhgjWsUVzDvAVMMuk75s57OIOW4or3A8WZH7rqB+jXJM7peQ==}
 
   '@sindresorhus/is@4.6.0':
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
@@ -5180,7 +5180,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@seapay-ai/erc3009@0.2.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
+  '@seapay-ai/erc3009@0.2.5(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
       ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
     transitivePeerDependencies:

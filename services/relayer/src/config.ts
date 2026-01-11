@@ -13,6 +13,8 @@ for (const envPath of envPaths) {
 
 // Supported chain IDs
 export const SUPPORTED_CHAINS = {
+  ETHEREUM: 1,
+  ETHEREUM_SEPOLIA: 11155111,
   BASE: 8453,
   BASE_SEPOLIA: 84532,
   POLYGON: 137,

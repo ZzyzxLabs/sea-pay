@@ -4,7 +4,7 @@
 # Usage: ./test-relay.sh [chain] [network]
 #
 # Arguments:
-#   chain   - Chain to test (base|polygon). Defaults to base if not specified.
+#   chain   - Chain to test (ethereum|base|polygon). Defaults to base if not specified.
 #   network - Network to test (testnet|mainnet). Defaults to testnet if not specified.
 #
 # Environment variables:
@@ -34,6 +34,15 @@ NETWORK=$(echo "$NETWORK" | tr '[:upper:]' '[:lower:]')
 
 # Determine test file based on chain and network
 case "$CHAIN" in
+  ethereum|eth)
+    if [ "$NETWORK" = "mainnet" ]; then
+      TEST_FILE="test/test-ethereum-mainnet-relay.mjs"
+      CHAIN_NAME="Ethereum Mainnet"
+    else
+      TEST_FILE="test/test-ethereum-sepolia-relay.mjs"
+      CHAIN_NAME="Ethereum Sepolia"
+    fi
+    ;;
   base)
     if [ "$NETWORK" = "mainnet" ]; then
       TEST_FILE="test/test-base-mainnet-relay.mjs"
@@ -58,18 +67,21 @@ case "$CHAIN" in
     echo "Usage: ./test-relay.sh [chain] [network]"
     echo ""
     echo "Supported chains:"
-    echo "  base    - Base network"
-    echo "  polygon - Polygon network"
+    echo "  ethereum, eth - Ethereum network"
+    echo "  base          - Base network"
+    echo "  polygon      - Polygon network"
     echo ""
     echo "Supported networks:"
     echo "  testnet  - Testnet (default)"
     echo "  mainnet  - Mainnet"
     echo ""
     echo "Examples:"
-    echo "  ./test-relay.sh base testnet    # Base Sepolia (default)"
-    echo "  ./test-relay.sh base mainnet    # Base Mainnet"
-    echo "  ./test-relay.sh polygon testnet # Polygon Amoy"
-    echo "  ./test-relay.sh polygon mainnet # Polygon Mainnet"
+    echo "  ./test-relay.sh ethereum testnet  # Ethereum Sepolia"
+    echo "  ./test-relay.sh ethereum mainnet  # Ethereum Mainnet"
+    echo "  ./test-relay.sh base testnet      # Base Sepolia (default)"
+    echo "  ./test-relay.sh base mainnet      # Base Mainnet"
+    echo "  ./test-relay.sh polygon testnet   # Polygon Amoy"
+    echo "  ./test-relay.sh polygon mainnet   # Polygon Mainnet"
     exit 1
     ;;
 esac
@@ -82,11 +94,13 @@ if [ -z "$FROM_PK" ]; then
   echo ""
   echo "Usage: FROM_PK=0xYourPrivateKey ./test-relay.sh [chain] [network]"
   echo ""
-  echo "Examples:"
-  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base testnet"
-  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base mainnet"
-  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon testnet"
-  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon mainnet"
+    echo "Examples:"
+    echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh ethereum testnet"
+    echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh ethereum mainnet"
+    echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base testnet"
+    echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base mainnet"
+    echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon testnet"
+    echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon mainnet"
   exit 1
 fi
 

@@ -18,7 +18,7 @@ export const CHAINS: Record<number, ChainConfig> = {
 
 /**
  * Token registry - USDC addresses and domain parameters per chain
- * Note: Base mainnet uses "USD Coin" while Base Sepolia uses "USDC"
+ * Note: Base mainnet uses "USDC" while Base Sepolia uses "USDC"
  */
 export const TOKENS: Record<string, Record<number, TokenConfig>> = {
   USDC: {
@@ -35,7 +35,7 @@ export const TOKENS: Record<string, Record<number, TokenConfig>> = {
       symbol: "USDC",
       chainId: 11155111,
       address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-      name: "USD Coin",
+      name: "USDC",
       version: "2",
       decimals: 6,
     },
@@ -61,7 +61,7 @@ export const TOKENS: Record<string, Record<number, TokenConfig>> = {
       symbol: "USDC",
       chainId: 42161,
       address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-      name: "USD Coin",
+      name: "USDC",
       version: "2",
       decimals: 6,
     },
@@ -69,7 +69,7 @@ export const TOKENS: Record<string, Record<number, TokenConfig>> = {
       symbol: "USDC",
       chainId: 421614,
       address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-      name: "USD Coin",
+      name: "USDC",
       version: "2",
       decimals: 6,
     },
@@ -78,7 +78,7 @@ export const TOKENS: Record<string, Record<number, TokenConfig>> = {
       symbol: "USDC",
       chainId: 10,
       address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
-      name: "USD Coin",
+      name: "USDC",
       version: "2",
       decimals: 6,
     },
@@ -86,7 +86,7 @@ export const TOKENS: Record<string, Record<number, TokenConfig>> = {
       symbol: "USDC",
       chainId: 11155420,
       address: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
-      name: "USD Coin",
+      name: "USDC",
       version: "2",
       decimals: 6,
     },
@@ -95,7 +95,7 @@ export const TOKENS: Record<string, Record<number, TokenConfig>> = {
       symbol: "USDC",
       chainId: 137,
       address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-      name: "USD Coin",
+      name: "USDC",
       version: "2",
       decimals: 6,
     },
