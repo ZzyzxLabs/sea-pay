@@ -1,15 +1,6 @@
 # @seapay-ai/erc3009
 
-Multi-chain ERC-3009 (TransferWithAuthorization) helper library for building, signing, and verifying EIP-712 typed data.
-
-## Features
-
-- ✅ **Multi-chain support**: Base, Ethereum, Arbitrum, Optimism, Polygon (mainnet + testnets)
-- ✅ **Token registry**: Pre-configured USDC addresses and domain parameters for all chains
-- ✅ **Type-safe**: Full TypeScript support with strict types
-- ✅ **Ergonomic API**: One-liner `prepare()` for common use cases
-- ✅ **Override support**: Customize domain parameters for custom tokens
-- ✅ **ethers.js v6**: Built on ethers v6 for signing and verification
+Simplified TypeScript library for ERC-3009 (TransferWithAuthorization) EIP-712 signing and verification.
 
 ## Installation
 
@@ -22,145 +13,161 @@ npm install @seapay-ai/erc3009
 ## Quick Start
 
 ```typescript
-import { prepare } from "@seapay-ai/erc3009";
+import {
+  buildTypedData,
+  buildMessage,
+  resolveDomain,
+  nowPlusSeconds,
+} from "@seapay-ai/erc3009";
 import { Wallet } from "ethers";
 
-// One-call convenience API
-const { typedData } = prepare({
-  chainId: 8453, // Base
-  token: "USDC",
+// 1. Build the message
+const message = buildMessage({
   from: wallet.address,
   to: "0xRecipient...",
   value: 1000000n, // 1 USDC (6 decimals)
-  ttlSeconds: 300, // 5 minutes
+  validBefore: nowPlusSeconds(300), // Valid for 5 minutes
 });
 
-// Sign with ethers wallet
-const signature = await wallet.signTypedData(
-  typedData.domain,
-  typedData.types,
-  typedData.message
-);
-```
-
-## Usage Examples
-
-### 1. Ergonomic API (Recommended)
-
-The `prepare()` function resolves the domain, builds the message, and returns everything needed:
-
-```typescript
-import { prepare } from "@seapay-ai/erc3009";
-
-const { domain, message, typedData } = prepare({
+// 2. Build typed data (includes domain resolution from registry)
+const {
+  domain,
+  types,
+  message: msg,
+} = buildTypedData({
   chainId: 8453, // Base mainnet
   token: "USDC",
-  from: "0xSender...",
-  to: "0xRecipient...",
-  value: 1000000n, // 1 USDC
-  ttlSeconds: 300, // optional, default: 300
+  message,
 });
 
-// Sign it
-const sig = await wallet.signTypedData(
-  typedData.domain,
-  typedData.types,
-  typedData.message
-);
+// 3. Sign with ethers wallet
+const signature = await wallet.signTypedData(domain, types, msg);
 ```
 
-### 2. Core Builders (Manual)
+## Core Functions
 
-For more control, use the core builders:
+### 1. Build Message
 
 ```typescript
-import {
-  resolveDomain,
-  buildMessage,
-  buildTypedData,
-  erc3009,
-} from "@seapay-ai/erc3009";
+import { buildMessage, nowPlusSeconds, randomNonce } from "@seapay-ai/erc3009";
 
-// 1. Resolve domain from registry
-const domain = resolveDomain({
-  chainId: 8453,
-  token: "USDC",
-});
-
-// 2. Build message
 const message = buildMessage({
   from: "0xSender...",
   to: "0xRecipient...",
-  value: 1000000n,
-  validAfter: 0n,
-  validBefore: 1234567890n,
-  nonce: "0x...", // or use randomNonce()
+  value: 1000000n, // Amount in token's smallest unit
+  validAfter: 0n, // Optional, defaults to 0
+  validBefore: nowPlusSeconds(300), // Unix timestamp
+  nonce: randomNonce(), // Optional, auto-generated if not provided
 });
-
-// 3. Build typed data
-const typedData = buildTypedData({ domain, message });
-
-// 4. Sign
-const signature = await erc3009.sign(wallet, domain, message);
 ```
 
-### 3. Using the Registry
+### 2. Build Typed Data
 
-Query supported chains and tokens:
+Automatically resolves token info from the registry:
 
 ```typescript
-import { registry, getToken, CHAINS } from "@seapay-ai/erc3009";
+import { buildTypedData } from "@seapay-ai/erc3009";
 
-// Get token config
-const usdcBase = getToken("USDC", 8453);
-// => { symbol: "USDC", chainId: 8453, verifyingContract: "0x...", ... }
+const typedData = buildTypedData({
+  chainId: 8453, // Base mainnet
+  token: "USDC", // Symbol from registry
+  message,
+});
 
-// List all chains
-const chains = registry.listChains();
-
-// Check support
-if (registry.isTokenSupported("USDC", 8453)) {
-  console.log("USDC is supported on Base");
-}
-
-// List tokens on a chain
-const tokens = registry.listTokensOnChain(8453);
+// Returns:
+// {
+//   domain: { name, version, chainId, verifyingContract },
+//   types: { TransferWithAuthorization: [...] },
+//   message: { from, to, value, ... },
+//   primaryType: "TransferWithAuthorization"
+// }
 ```
-
-### 4. Custom Tokens / Domain Overrides
 
 For custom tokens not in the registry:
 
 ```typescript
-import { prepare } from "@seapay-ai/erc3009";
-
-const { typedData } = prepare({
+const typedData = buildTypedData({
   chainId: 8453,
   token: "0xCustomTokenAddress",
-  // Override domain fields
-  name: "My Custom Token",
-  version: "1",
-  verifyingContract: "0xCustomTokenAddress",
-  from: "0xSender...",
-  to: "0xRecipient...",
-  value: 1000000n,
+  message,
+  domainOverrides: {
+    name: "My Token",
+    version: "1",
+    verifyingContract: "0xCustomTokenAddress",
+  },
 });
 ```
 
-### 5. Signature Verification
+### 3. Resolve Domain
+
+Resolve EIP-712 domain from chain ID and token:
+
+```typescript
+import { resolveDomain } from "@seapay-ai/erc3009";
+
+// Resolve USDC domain on Base
+const domain = resolveDomain(8453, "USDC");
+// Returns:
+// {
+//   name: "USD Coin",
+//   version: "2",
+//   chainId: 8453,
+//   verifyingContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+// }
+
+// For custom tokens
+const customDomain = resolveDomain(8453, "0xCustomTokenAddress", {
+  name: "My Token",
+  version: "1",
+  verifyingContract: "0xCustomTokenAddress",
+});
+```
+
+This function is useful when you need just the domain object without building the complete typed data structure. It's used internally by `buildTypedData`.
+
+### 4. Verify Signature
 
 ```typescript
 import { verifySignature, recoverSigner } from "@seapay-ai/erc3009";
 
-// Recover signer
-const recovered = recoverSigner(domain, message, signature);
-console.log("Signed by:", recovered);
-
-// Verify signature
+// Verify signature matches expected signer
 const isValid = verifySignature(domain, message, signature, expectedSigner);
+
+// Or recover the signer address
+const signer = recoverSigner(domain, message, signature);
+console.log("Signed by:", signer);
 ```
 
-## Supported Chains
+## Registry
+
+The package includes a built-in registry of USDC deployments across multiple chains.
+
+### Query the Registry
+
+```typescript
+import { registry, getTokenInfo } from "@seapay-ai/erc3009";
+
+// Get token config
+const usdcBase = registry.getToken("USDC", 8453);
+// => { symbol: "USDC", chainId: 8453, address: "0x...", name: "USD Coin", version: "2", decimals: 6 }
+
+// Check if token is supported
+if (registry.isSupported("USDC", 8453)) {
+  console.log("USDC supported on Base");
+}
+
+// List all chains
+const chains = registry.listChains();
+
+// List tokens on a chain
+const tokens = registry.listTokensOnChain(8453);
+
+// Get chain info
+const baseChain = registry.getChain(8453);
+// => { chainId: 8453, name: "Base", testnet: false }
+```
+
+### Supported Chains
 
 | Chain            | Chain ID | Testnet |
 | ---------------- | -------- | ------- |
@@ -175,81 +182,93 @@ const isValid = verifySignature(domain, message, signature, expectedSigner);
 | Polygon          | 137      | -       |
 | Polygon Amoy     | 80002    | ✅      |
 
-## Supported Tokens
+### Supported Tokens
 
-Currently supports **USDC** on all chains above. The registry includes:
-
-- Proxy contract addresses
-- EIP-712 domain parameters (name, version)
-- Token decimals
+Currently includes **USDC** on all chains above.
 
 ### ⚠️ Important: Base Network Domain Names
 
-USDC has **different domain names** on Base networks:
+USDC has **different EIP-712 domain names** on Base networks:
 
 | Network      | Chain ID | Domain Name  |
 | ------------ | -------- | ------------ |
 | Base Mainnet | 8453     | `"USD Coin"` |
 | Base Sepolia | 84532    | `"USDC"`     |
 
-**This is critical for signature verification!** Always use the correct domain name:
+The registry handles this automatically. Always use the registry to ensure correct domain parameters.
+
+## Complete Example
 
 ```typescript
-// ✅ Correct - Base Mainnet
-const { typedData } = prepare({
-  chainId: 8453,
-  token: "USDC", // Resolves to name: "USD Coin"
-  from: "0x...",
-  to: "0x...",
-  value: 1000000n,
+import {
+  buildTypedData,
+  buildMessage,
+  nowPlusSeconds,
+  verifySignature,
+} from "@seapay-ai/erc3009";
+import { Wallet } from "ethers";
+
+// Create wallet
+const wallet = new Wallet("0x...");
+
+// Build message
+const message = buildMessage({
+  from: wallet.address,
+  to: "0xRecipient...",
+  value: 1000000n, // 1 USDC
+  validBefore: nowPlusSeconds(300), // 5 minutes
 });
 
-// ✅ Correct - Base Sepolia
-const { typedData } = prepare({
-  chainId: 84532,
-  token: "USDC", // Resolves to name: "USDC"
-  from: "0x...",
-  to: "0x...",
-  value: 1000000n,
-});
-
-// ❌ Wrong - Signature will fail!
-const { typedData } = prepare({
-  chainId: 84532,
+// Build typed data
+const {
+  domain,
+  types,
+  message: msg,
+} = buildTypedData({
+  chainId: 84532, // Base Sepolia
   token: "USDC",
-  name: "USD Coin", // Override with wrong name
-  // ...
+  message,
 });
-```
 
-The `prepare()` function automatically uses the correct domain name from the registry.
+// Sign
+const signature = await wallet.signTypedData(domain, types, msg);
+
+// Verify
+const isValid = verifySignature(domain, message, signature, wallet.address);
+console.log("Signature valid:", isValid);
+```
 
 ## API Reference
 
-### Core Functions
+### Build Functions
 
-- `prepare(params)` - One-call API to build everything
-- `buildMessage(params)` - Build TransferWithAuthorization message
-- `buildTypedData({ domain, message })` - Build EIP-712 typed data
-- `resolveDomain({ chainId, token, ...overrides })` - Resolve EIP-712 domain
-- `erc3009.sign(wallet, domain, message)` - Sign with ethers wallet
-- `verifySignature(domain, message, sig, signer)` - Verify signature
-- `recoverSigner(domain, message, sig)` - Recover signer address
+- **`buildMessage(params)`** - Create TransferWithAuthorization message
+- **`buildTypedData(params)`** - Create complete EIP-712 typed data with domain resolution
 
-### Registry
+### Domain Resolution
 
-- `registry.getToken(symbol, chainId)` - Get token config
-- `registry.getChain(chainId)` - Get chain config
-- `registry.listChains()` - List all supported chains
-- `registry.listTokensOnChain(chainId)` - List tokens on a chain
-- `registry.isTokenSupported(symbol, chainId)` - Check support
+- **`resolveDomain(chainId, token, domainOverrides?)`** - Resolve EIP-712 domain from chain and token
 
-### Utils
+### Verification Functions
 
-- `randomNonce()` - Generate random bytes32 nonce
-- `nowSeconds()` - Current Unix timestamp
-- `nowPlusSeconds(n)` - Unix timestamp N seconds from now
-- `normalizeAddress(addr)` - Normalize to checksum address
+- **`verifySignature(domain, message, signature, expectedSigner)`** - Verify signature
+- **`recoverSigner(domain, message, signature)`** - Recover signer address
+
+### Registry Functions
+
+- **`getTokenInfo(symbol, chainId)`** - Get token configuration
+- **`registry.getToken(symbol, chainId)`** - Get token config
+- **`registry.getChain(chainId)`** - Get chain config
+- **`registry.listChains()`** - List all chains
+- **`registry.listChainIds()`** - List all chain IDs
+- **`registry.isSupported(symbol, chainId)`** - Check if token is supported
+- **`registry.listTokensOnChain(chainId)`** - List tokens on a chain
+
+### Utility Functions
+
+- **`randomNonce()`** - Generate random bytes32 nonce
+- **`nowPlusSeconds(seconds)`** - Get Unix timestamp N seconds from now
+- **`nowSeconds()`** - Get current Unix timestamp
 
 ## TypeScript Types
 
@@ -257,43 +276,11 @@ The `prepare()` function automatically uses the correct domain name from the reg
 import type {
   TransferWithAuthorization,
   EIP712Domain,
+  TypedData,
   TokenConfig,
   ChainConfig,
-  PrepareParams,
 } from "@seapay-ai/erc3009";
 ```
-
-## Advanced: Custom Registry
-
-You can extend the registry by directly importing and modifying `TOKENS`:
-
-```typescript
-import { TOKENS } from "@seapay-ai/erc3009";
-
-// Add your custom token
-TOKENS["MYTOKEN"] = {
-  8453: {
-    symbol: "MYTOKEN",
-    chainId: 8453,
-    verifyingContract: "0x...",
-    name: "My Token",
-    version: "1",
-    decimals: 18,
-  },
-};
-```
-
-## Examples
-
-See the `/apps/erc3009-relay/src/signer-test.ts` in the monorepo for a complete working example.
-
-## Contributing
-
-Contributions welcome! To add support for a new token:
-
-1. Add token config to `src/registry/tokens/{token}.ts`
-2. Export from `src/registry/tokens/index.ts`
-3. Add to `TOKENS` registry
 
 ## License
 

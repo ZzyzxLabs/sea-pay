@@ -1,7 +1,16 @@
 #!/bin/bash
 
 # Test script for the ERC-3009 relayer service
-# Usage: ./test-relay.sh
+# Usage: ./test-relay.sh [chain]
+#
+# Arguments:
+#   chain - Chain to test (base|polygon). Defaults to base if not specified.
+#
+# Environment variables:
+#   FROM_PK - Private key of the sender (required)
+#   RELAY_BASE_URL - Base URL of the relayer (default: http://localhost:3001)
+#   TO_ADDRESS - Recipient address (optional)
+#   VALUE - Amount in smallest unit (optional)
 
 set -e
 
@@ -14,48 +23,82 @@ if [ -f "$ROOT_ENV" ]; then
   set +a
 fi
 
+# Parse chain argument
+CHAIN=${1:-base}
+CHAIN=$(echo "$CHAIN" | tr '[:upper:]' '[:lower:]')
+
+# Determine test file based on chain
+case "$CHAIN" in
+  base|basesepolia|base-sepolia)
+    TEST_FILE="test/test-base-sepolia-relay.mjs"
+    CHAIN_NAME="Base Sepolia"
+    ;;
+  polygon|polygonamoy|polygon-amoy|amoy)
+    TEST_FILE="test/test-polygon-relay.mjs"
+    CHAIN_NAME="Polygon Amoy"
+    ;;
+  *)
+    echo "❌ Error: Unknown chain '$CHAIN'"
+    echo ""
+    echo "Usage: ./test-relay.sh [chain]"
+    echo ""
+    echo "Supported chains:"
+    echo "  base, basesepolia, base-sepolia  - Base Sepolia testnet (default)"
+    echo "  polygon, polygonamoy, polygon-amoy, amoy  - Polygon Amoy testnet"
+    echo ""
+    echo "Example:"
+    echo "  ./test-relay.sh base"
+    echo "  ./test-relay.sh polygon"
+    exit 1
+    ;;
+esac
+
 # Use environment variables with defaults
 RELAY_BASE_URL=${RELAY_BASE_URL:-http://localhost:3001}
-TOKEN=${TOKEN:-"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"}  # USDC on Ethereum
-TO=${TO:-"0x8ba1f109551bD432803012645Hac136c22C3e0"}
-VALUE=${VALUE:-"1000000"}  # 1 USDC (6 decimals)
-FROM_PK=${FROM_PK:-""}
 
 if [ -z "$FROM_PK" ]; then
-  echo "Error: FROM_PK environment variable is required"
-  echo "Usage: FROM_PK=0xYourPrivateKey ./test-relay.sh"
+  echo "❌ Error: FROM_PK environment variable is required"
+  echo ""
+  echo "Usage: FROM_PK=0xYourPrivateKey ./test-relay.sh [chain]"
+  echo ""
+  echo "Example:"
+  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base"
+  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon"
   exit 1
 fi
 
-echo "Testing ERC-3009 Relayer Service"
+echo "🧪 Testing ERC-3009 Relayer Service"
+echo "Chain: $CHAIN_NAME"
 echo "Relay URL: $RELAY_BASE_URL"
-echo "Token: $TOKEN"
-echo "To: $TO"
-echo "Value: $VALUE"
+echo "Test File: $TEST_FILE"
 echo ""
 
-# 1. Health check
-echo "1. Checking health..."
-HEALTH=$(curl -s "$RELAY_BASE_URL/health")
-echo "Response: $HEALTH"
-echo ""
-
-# 2. Full relay test (requires Node.js and ethers.js)
-echo "2. Running full relay test..."
-echo ""
+# Check if test file exists
+if [ ! -f "$SCRIPT_DIR/$TEST_FILE" ]; then
+  echo "❌ Error: Test file not found: $TEST_FILE"
+  exit 1
+fi
 
 # Check if Node.js is available
 if ! command -v node &> /dev/null; then
-  echo "⚠️  Node.js is not installed. Skipping relay test."
-  echo "   To run the full relay test, install Node.js and run:"
-  echo "   node test-relay.mjs"
-  echo ""
-  echo "   Or use pnpm:"
-  echo "   pnpm --filter @seapay/relayer-service test"
-  exit 0
+  echo "❌ Error: Node.js is not installed"
+  echo "   Please install Node.js to run the relay test"
+  exit 1
 fi
 
-# Run the Node.js test script with the same environment variables
-echo "Running Node.js relay test..."
-node test-relay.mjs
+# 1. Health check (optional, don't fail if it doesn't work)
+echo "1. Checking relayer health..."
+if curl -s -f "$RELAY_BASE_URL/health" > /dev/null 2>&1; then
+  HEALTH=$(curl -s "$RELAY_BASE_URL/health")
+  echo "   ✅ Relayer is healthy: $HEALTH"
+else
+  echo "   ⚠️  Relayer health check failed (continuing anyway)"
+fi
+echo ""
 
+# 2. Run the test
+echo "2. Running ERC-3009 relay test for $CHAIN_NAME..."
+echo ""
+
+cd "$SCRIPT_DIR"
+node "$TEST_FILE"

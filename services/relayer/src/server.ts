@@ -2,15 +2,19 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
-import { JsonRpcProvider, Wallet, Contract, Signature } from "ethers";
 import {
-  buildTypes,
+  JsonRpcProvider,
+  Wallet,
+  Contract,
+  Signature,
+  getAddress,
+} from "ethers";
+import {
   verifySignature,
-  getToken,
-  getTokenByAddress,
-  normalizeAddress,
+  registry,
   type EIP712Domain,
   type TransferWithAuthorization,
+  type TypedData,
 } from "@seapay-ai/erc3009";
 
 console.log("cwd:", process.cwd());
@@ -76,6 +80,10 @@ provider.getNetwork().then((network) => {
   console.log(`   Relayer: ${relayer.address}`);
 });
 
+function normalizeAddress(address: string): string {
+  return getAddress(address);
+}
+
 function nonceKey(token: string, from: string, nonce: string) {
   return `${normalizeAddress(token)}|${normalizeAddress(
     from
@@ -106,20 +114,25 @@ app.get("/api/tokenDomain", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "token not allowed" });
     }
 
-    // Try registry first
-    const tokenConfig = getTokenByAddress(normalized, chainId);
-    if (tokenConfig) {
-      const domain: EIP712Domain = {
-        name: tokenConfig.name,
-        version: tokenConfig.version,
-        chainId: tokenConfig.chainId,
-        verifyingContract: tokenConfig.verifyingContract,
-      };
-      return res.json(domain);
+    // Try registry first - check all known tokens
+    for (const symbol of ["USDC"]) {
+      const tokenConfig = registry.getToken(symbol, chainId);
+      if (tokenConfig) {
+        const tokenAddress = (tokenConfig as any).address;
+        if (tokenAddress && normalizeAddress(tokenAddress) === normalized) {
+          const domain: EIP712Domain = {
+            name: tokenConfig.name,
+            version: tokenConfig.version,
+            chainId: tokenConfig.chainId,
+            verifyingContract: tokenAddress,
+          };
+          return res.json(domain);
+        }
+      }
     }
 
     // Fall back to on-chain query
-    const erc20 = new Contract(normalized, ERC3009_ABI, provider);
+    const erc20 = new Contract(normalized, ERC20_ABI, provider);
     let name = "Token";
     let version = "1";
 
@@ -154,109 +167,86 @@ app.get("/api/tokenDomain", async (req: Request, res: Response) => {
  * Relays an ERC-3009 TransferWithAuthorization transaction.
  *
  * Request body:
- * - token: token contract address
- * - from: sender address
- * - to: recipient address
- * - value: amount (string)
- * - validAfter: unix timestamp (string)
- * - validBefore: unix timestamp (string)
- * - nonce: bytes32 hex string
+ * - typedData: Complete EIP-712 typed data object containing:
+ *   - domain: EIP-712 domain
+ *   - types: Type definitions
+ *   - message: TransferWithAuthorization message
+ *   - primaryType: "TransferWithAuthorization"
  * - signature: EIP-712 signature
- * - domain: EIP-712 domain object
  */
 app.post("/erc3009/relay", async (req: Request, res: Response) => {
   try {
-    const {
-      token,
-      from,
-      to,
-      value,
-      validAfter,
-      validBefore,
-      nonce,
-      signature,
-      domain,
-    } = req.body || {};
+    const { typedData, signature } = req.body || {};
 
     // Validate required fields
-    if (
-      !token ||
-      !from ||
-      !to ||
-      value == null ||
-      validAfter == null ||
-      validBefore == null ||
-      !nonce ||
-      !signature ||
-      !domain
-    ) {
-      return res.status(400).json({ error: "missing required fields" });
+    if (!typedData || !signature) {
+      return res.status(400).json({ error: "missing typedData or signature" });
     }
 
-    const normalizedToken = normalizeAddress(token);
+    // Validate typedData structure
+    if (
+      !typedData.domain ||
+      !typedData.message ||
+      !typedData.types ||
+      !typedData.primaryType
+    ) {
+      return res.status(400).json({ error: "invalid typedData structure" });
+    }
+
+    // Extract domain and message from typedData
+    const domain = typedData.domain as EIP712Domain;
+    const rawMessage = typedData.message as TransferWithAuthorization;
+
+    // Validate domain
+    if (!domain.verifyingContract) {
+      return res
+        .status(400)
+        .json({ error: "domain missing verifyingContract" });
+    }
+
+    const normalizedToken = normalizeAddress(domain.verifyingContract);
 
     // Check allowlist
     if (!isAllowedToken(normalizedToken)) {
       return res.status(400).json({ error: "token not allowed" });
     }
 
-    // Validate domain
-    const typedDomain = domain as EIP712Domain;
-    if (!typedDomain.verifyingContract) {
-      return res
-        .status(400)
-        .json({ error: "domain missing verifyingContract" });
+    // Validate primaryType
+    if (typedData.primaryType !== "TransferWithAuthorization") {
+      return res.status(400).json({ error: "invalid primaryType" });
     }
 
-    if (normalizeAddress(typedDomain.verifyingContract) !== normalizedToken) {
-      return res
-        .status(400)
-        .json({ error: "domain verifyingContract mismatch with token" });
-    }
+    const message: TransferWithAuthorization = typedData.message;
 
     // Validate time window
     const now = BigInt(Math.floor(Date.now() / 1000));
-    const validAfterBn = BigInt(validAfter);
-    const validBeforeBn = BigInt(validBefore);
-
-    if (now <= validAfterBn) {
+    if (now <= message.validAfter) {
       return res.status(400).json({ error: "authorization not yet valid" });
     }
 
-    if (now >= validBeforeBn) {
+    if (now >= message.validBefore) {
       return res.status(400).json({ error: "authorization expired" });
     }
 
-    // Build message
-    const message: TransferWithAuthorization = {
-      from,
-      to,
-      value: BigInt(value),
-      validAfter: validAfterBn,
-      validBefore: validBeforeBn,
-      nonce,
-    };
-
     // Verify signature using erc3009 package
-    const isValid = verifySignature(typedDomain, message, signature, from);
+    const isValid = verifySignature(domain, message, signature, message.from);
     if (!isValid) {
       return res.status(400).json({ error: "invalid signature" });
     }
 
     // Check nonce replay protection
-    const nonceTracker = nonceKey(normalizedToken, from, nonce);
+    const nonceTracker = nonceKey(normalizedToken, message.from, message.nonce);
     if (usedNonces.has(nonceTracker)) {
       return res.status(400).json({ error: "nonce already used" });
     }
 
     console.log("Relaying transaction:");
-    console.log(`  from: ${from}`);
-    console.log(`  to: ${to}`);
-    console.log(`  value: ${value}`);
-    console.log(`  validAfter: ${validAfter}`);
-    console.log(`  validBefore: ${validBefore}`);
-    console.log(`  nonce: ${nonce}`);
-    console.log("signature:", signature);
+    console.log(`  from: ${message.from}`);
+    console.log(`  to: ${message.to}`);
+    console.log(`  value: ${message.value.toString()}`);
+    console.log(`  validAfter: ${message.validAfter.toString()}`);
+    console.log(`  validBefore: ${message.validBefore.toString()}`);
+    console.log(`  nonce: ${message.nonce}`);
 
     // Split signature for contract call
     const { v, r, s } = Signature.from(signature);
@@ -264,8 +254,8 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
     // Execute on-chain transaction
     const contract = new Contract(normalizedToken, ERC3009_ABI, relayer);
     const tx = await contract.transferWithAuthorization(
-      from,
-      to,
+      message.from,
+      message.to,
       message.value,
       message.validAfter,
       message.validBefore,
@@ -278,14 +268,18 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
     // Mark nonce as used
     usedNonces.add(nonceTracker);
 
-    console.log(`✓ Relayed tx ${tx.hash} for ${from} → ${to} (${value})`);
+    console.log(
+      `✓ Relayed tx ${tx.hash} for ${message.from} → ${
+        message.to
+      } (${message.value.toString()})`
+    );
 
     return res.json({
       txHash: tx.hash,
       success: true,
     });
   } catch (err: any) {
-    console.error("Error in /base/relay:", err);
+    console.error("Error in /erc3009/relay:", err);
 
     // Return more specific error if available
     const errorMessage = err.reason || err.message || "internal_error";
