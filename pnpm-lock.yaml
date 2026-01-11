@@ -24,8 +24,8 @@ importers:
         specifier: ^0.33.1
         version: 0.33.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@seapay-ai/erc3009':
-        specifier: 0.2.2
-        version: 0.2.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+        specifier: ^0.2.7
+        version: 0.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@seapay/deeplink':
         specifier: workspace:^0.0.1
         version: link:../../packages/deeplink
@@ -1339,9 +1339,6 @@ packages:
 
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
-
-  '@seapay-ai/erc3009@0.2.2':
-    resolution: {integrity: sha512-RZSyv9HOrlorNBAlXOMoySDW1VuGDWSvkRVao8RXLOf0JssmPof/9n2zwvjcMULirHCJYj7JuxXkABw+NemKxg==}
 
   '@seapay-ai/erc3009@0.2.7':
     resolution: {integrity: sha512-HLUkUvcuE+3BxJmsSLoYGeUlE+3c22U8ePotVj8S4T46ZKTaKI6dUk/bQXgn93o6ugMw+m2rg/zyZUbZLsJRww==}
@@ -5588,13 +5585,6 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
-
-  '@seapay-ai/erc3009@0.2.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
-    dependencies:
-      ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   '@seapay-ai/erc3009@0.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
