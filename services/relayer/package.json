@@ -9,13 +9,15 @@
     "build": "tsc",
     "start": "node --enable-source-maps dist/server.js",
     "test": "node test/test-base-sepolia-relay.mjs",
-    "test:base": "node test/test-base-sepolia-relay.mjs",
-    "test:polygon": "node test/test-polygon-relay.mjs",
+    "test:base:testnet": "node test/test-base-sepolia-relay.mjs",
+    "test:base:mainnet": "node test/test-base-mainnet-relay.mjs",
+    "test:polygon:testnet": "node test/test-polygon-amoy-relay.mjs",
+    "test:polygon:mainnet": "node test/test-polygon-mainnet-relay.mjs",
     "openapi:validate": "swagger-cli validate openapi.yaml",
     "openapi:bundle": "swagger-cli bundle -o openapi.bundle.yaml openapi.yaml"
   },
   "dependencies": {
-    "@seapay-ai/erc3009": "workspace:*",
+    "@seapay-ai/erc3009": "^0.2.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "ethers": "^6.16.0",
