@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # Test script for the ERC-3009 relayer service
-# Usage: ./test-relay.sh [chain]
+# Usage: ./test-relay.sh [chain] [network]
 #
 # Arguments:
-#   chain - Chain to test (base|polygon). Defaults to base if not specified.
+#   chain   - Chain to test (base|polygon). Defaults to base if not specified.
+#   network - Network to test (testnet|mainnet). Defaults to testnet if not specified.
 #
 # Environment variables:
 #   FROM_PK - Private key of the sender (required)
@@ -23,32 +24,52 @@ if [ -f "$ROOT_ENV" ]; then
   set +a
 fi
 
-# Parse chain argument
+# Parse arguments
+# Default to base testnet if not specified
 CHAIN=${1:-base}
 CHAIN=$(echo "$CHAIN" | tr '[:upper:]' '[:lower:]')
+# Default to testnet if network not specified
+NETWORK=${2:-testnet}
+NETWORK=$(echo "$NETWORK" | tr '[:upper:]' '[:lower:]')
 
-# Determine test file based on chain
+# Determine test file based on chain and network
 case "$CHAIN" in
-  base|basesepolia|base-sepolia)
-    TEST_FILE="test/test-base-sepolia-relay.mjs"
-    CHAIN_NAME="Base Sepolia"
+  base)
+    if [ "$NETWORK" = "mainnet" ]; then
+      TEST_FILE="test/test-base-mainnet-relay.mjs"
+      CHAIN_NAME="Base Mainnet"
+    else
+      TEST_FILE="test/test-base-sepolia-relay.mjs"
+      CHAIN_NAME="Base Sepolia"
+    fi
     ;;
-  polygon|polygonamoy|polygon-amoy|amoy)
-    TEST_FILE="test/test-polygon-relay.mjs"
-    CHAIN_NAME="Polygon Amoy"
+  polygon)
+    if [ "$NETWORK" = "mainnet" ]; then
+      TEST_FILE="test/test-polygon-mainnet-relay.mjs"
+      CHAIN_NAME="Polygon Mainnet"
+    else
+      TEST_FILE="test/test-polygon-amoy-relay.mjs"
+      CHAIN_NAME="Polygon Amoy"
+    fi
     ;;
   *)
     echo "❌ Error: Unknown chain '$CHAIN'"
     echo ""
-    echo "Usage: ./test-relay.sh [chain]"
+    echo "Usage: ./test-relay.sh [chain] [network]"
     echo ""
     echo "Supported chains:"
-    echo "  base, basesepolia, base-sepolia  - Base Sepolia testnet (default)"
-    echo "  polygon, polygonamoy, polygon-amoy, amoy  - Polygon Amoy testnet"
+    echo "  base    - Base network"
+    echo "  polygon - Polygon network"
     echo ""
-    echo "Example:"
-    echo "  ./test-relay.sh base"
-    echo "  ./test-relay.sh polygon"
+    echo "Supported networks:"
+    echo "  testnet  - Testnet (default)"
+    echo "  mainnet  - Mainnet"
+    echo ""
+    echo "Examples:"
+    echo "  ./test-relay.sh base testnet    # Base Sepolia (default)"
+    echo "  ./test-relay.sh base mainnet    # Base Mainnet"
+    echo "  ./test-relay.sh polygon testnet # Polygon Amoy"
+    echo "  ./test-relay.sh polygon mainnet # Polygon Mainnet"
     exit 1
     ;;
 esac
@@ -59,16 +80,19 @@ RELAY_BASE_URL=${RELAY_BASE_URL:-http://localhost:3001}
 if [ -z "$FROM_PK" ]; then
   echo "❌ Error: FROM_PK environment variable is required"
   echo ""
-  echo "Usage: FROM_PK=0xYourPrivateKey ./test-relay.sh [chain]"
+  echo "Usage: FROM_PK=0xYourPrivateKey ./test-relay.sh [chain] [network]"
   echo ""
-  echo "Example:"
-  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base"
-  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon"
+  echo "Examples:"
+  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base testnet"
+  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh base mainnet"
+  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon testnet"
+  echo "  FROM_PK=0xYourPrivateKey ./test-relay.sh polygon mainnet"
   exit 1
 fi
 
 echo "🧪 Testing ERC-3009 Relayer Service"
 echo "Chain: $CHAIN_NAME"
+echo "Network: $NETWORK"
 echo "Relay URL: $RELAY_BASE_URL"
 echo "Test File: $TEST_FILE"
 echo ""
