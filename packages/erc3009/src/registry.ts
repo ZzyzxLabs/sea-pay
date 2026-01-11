@@ -103,7 +103,7 @@ export const TOKENS: Record<string, Record<number, TokenConfig>> = {
       symbol: "USDC",
       chainId: 80002,
       address: "0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582",
-      name: "USD Coin",
+      name: "USDC",
       version: "2",
       decimals: 6,
     },

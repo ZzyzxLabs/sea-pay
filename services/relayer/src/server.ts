@@ -1,43 +1,29 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
-import path from "path";
-import dotenv from "dotenv";
-import {
-  JsonRpcProvider,
-  Wallet,
-  Contract,
-  Signature,
-  getAddress,
-} from "ethers";
+import { Contract, Signature } from "ethers";
 import {
   verifySignature,
   registry,
   type EIP712Domain,
   type TransferWithAuthorization,
-  type TypedData,
 } from "@seapay-ai/erc3009";
+import {
+  ERC3009_ABI,
+  ERC20_ABI,
+  SUPPORTED_CHAINS,
+  isAllowedToken,
+} from "./config.js";
+import {
+  getProvider,
+  getRelayer,
+  getRpcUrl,
+  isSupportedChain,
+  initializeChains,
+} from "./providers.js";
+import { normalizeAddress, nonceKey } from "./utils.js";
 
 console.log("cwd:", process.cwd());
 console.log("PORT:", process.env.PORT);
-
-// Load env from current working dir (root run) and monorepo root (when cwd is services/relayer)
-const envPaths = [
-  path.resolve(process.cwd(), ".env"),
-  path.resolve(process.cwd(), "..", "..", ".env"),
-];
-for (const envPath of envPaths) {
-  dotenv.config({ path: envPath });
-}
-
-const ERC3009_ABI = [
-  "function DOMAIN_SEPARATOR() view returns (bytes32)",
-  "function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)",
-];
-
-const ERC20_ABI = [
-  "function name() view returns (string)",
-  "function version() view returns (string)",
-];
 
 const app = express();
 
@@ -66,37 +52,13 @@ app.use(
 // JSON body parser - must be after CORS
 app.use(express.json());
 
-const provider = new JsonRpcProvider(requiredEnv("RPC_URL"));
-const relayer = new Wallet(requiredEnv("RELAYER_PK"), provider);
-const allowlist = parseAllowlist(process.env.TOKEN_ALLOWLIST);
-const usedNonces = new Set<string>(); // key: token|from|nonce
+const usedNonces = new Set<string>(); // key: chainId|token|from|nonce
 
-// Get chain ID from provider (set once at startup)
-let chainId: number;
-provider.getNetwork().then((network) => {
-  chainId = Number(network.chainId);
-  console.log(`\n🚀 ERC-3009 Relay Server`);
-  console.log(`   Chain: ${chainId} (${network.name})`);
-  console.log(`   Relayer: ${relayer.address}`);
-});
-
-function normalizeAddress(address: string): string {
-  return getAddress(address);
-}
-
-function nonceKey(token: string, from: string, nonce: string) {
-  return `${normalizeAddress(token)}|${normalizeAddress(
-    from
-  )}|${nonce.toLowerCase()}`;
-}
-
-function isAllowedToken(token: string): boolean {
-  if (!allowlist) return true;
-  return allowlist.has(normalizeAddress(token));
-}
+// Initialize and log supported chains
+initializeChains();
 
 /**
- * GET /api/tokenDomain?token=<address>
+ * GET /api/tokenDomain?token=<address>&chainId=<chainId>
  *
  * Returns the EIP-712 domain for a token.
  * - First checks registry for known tokens
@@ -109,8 +71,20 @@ app.get("/api/tokenDomain", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "token query parameter required" });
     }
 
+    const chainIdParam = req.query.chainId;
+    if (!chainIdParam) {
+      return res
+        .status(400)
+        .json({ error: "chainId query parameter required" });
+    }
+
+    const chainId = Number(chainIdParam);
+    if (!isSupportedChain(chainId)) {
+      return res.status(400).json({ error: `unsupported chain: ${chainId}` });
+    }
+
     const normalized = normalizeAddress(tokenAddress);
-    if (!isAllowedToken(normalized)) {
+    if (!isAllowedToken(normalized, chainId)) {
       return res.status(400).json({ error: "token not allowed" });
     }
 
@@ -118,13 +92,13 @@ app.get("/api/tokenDomain", async (req: Request, res: Response) => {
     for (const symbol of ["USDC"]) {
       const tokenConfig = registry.getToken(symbol, chainId);
       if (tokenConfig) {
-        const tokenAddress = (tokenConfig as any).address;
-        if (tokenAddress && normalizeAddress(tokenAddress) === normalized) {
+        const tokenAddr = (tokenConfig as any).address;
+        if (tokenAddr && normalizeAddress(tokenAddr) === normalized) {
           const domain: EIP712Domain = {
             name: tokenConfig.name,
             version: tokenConfig.version,
             chainId: tokenConfig.chainId,
-            verifyingContract: tokenAddress,
+            verifyingContract: tokenAddr,
           };
           return res.json(domain);
         }
@@ -132,6 +106,7 @@ app.get("/api/tokenDomain", async (req: Request, res: Response) => {
     }
 
     // Fall back to on-chain query
+    const provider = getProvider(chainId);
     const erc20 = new Contract(normalized, ERC20_ABI, provider);
     let name = "Token";
     let version = "1";
@@ -165,10 +140,11 @@ app.get("/api/tokenDomain", async (req: Request, res: Response) => {
  * POST /erc3009/relay
  *
  * Relays an ERC-3009 TransferWithAuthorization transaction.
+ * Extracts chain ID from typedData.domain.chainId and uses the appropriate RPC endpoint.
  *
  * Request body:
  * - typedData: Complete EIP-712 typed data object containing:
- *   - domain: EIP-712 domain
+ *   - domain: EIP-712 domain (must include chainId)
  *   - types: Type definitions
  *   - message: TransferWithAuthorization message
  *   - primaryType: "TransferWithAuthorization"
@@ -195,7 +171,17 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
 
     // Extract domain and message from typedData
     const domain = typedData.domain as EIP712Domain;
-    const rawMessage = typedData.message as TransferWithAuthorization;
+    const message = typedData.message as TransferWithAuthorization;
+
+    // Extract chain ID from domain
+    if (!domain.chainId) {
+      return res.status(400).json({ error: "domain missing chainId" });
+    }
+
+    const chainId = Number(domain.chainId);
+    if (!isSupportedChain(chainId)) {
+      return res.status(400).json({ error: `unsupported chain: ${chainId}` });
+    }
 
     // Validate domain
     if (!domain.verifyingContract) {
@@ -207,7 +193,7 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
     const normalizedToken = normalizeAddress(domain.verifyingContract);
 
     // Check allowlist
-    if (!isAllowedToken(normalizedToken)) {
+    if (!isAllowedToken(normalizedToken, chainId)) {
       return res.status(400).json({ error: "token not allowed" });
     }
 
@@ -216,7 +202,17 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "invalid primaryType" });
     }
 
-    const message: TransferWithAuthorization = typedData.message;
+    // Validate message fields
+    if (
+      !message.from ||
+      !message.to ||
+      message.value == null ||
+      message.validAfter == null ||
+      message.validBefore == null ||
+      !message.nonce
+    ) {
+      return res.status(400).json({ error: "invalid message structure" });
+    }
 
     // Validate time window
     const now = BigInt(Math.floor(Date.now() / 1000));
@@ -234,13 +230,22 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "invalid signature" });
     }
 
-    // Check nonce replay protection
-    const nonceTracker = nonceKey(normalizedToken, message.from, message.nonce);
+    // Check nonce replay protection (chain-specific)
+    const nonceTracker = nonceKey(
+      chainId,
+      normalizedToken,
+      message.from,
+      message.nonce
+    );
     if (usedNonces.has(nonceTracker)) {
       return res.status(400).json({ error: "nonce already used" });
     }
 
-    console.log("Relaying transaction:");
+    // Get provider and relayer for this chain
+    const provider = getProvider(chainId);
+    const relayer = getRelayer(chainId);
+
+    console.log(`Relaying transaction on chain ${chainId}:`);
     console.log(`  from: ${message.from}`);
     console.log(`  to: ${message.to}`);
     console.log(`  value: ${message.value.toString()}`);
@@ -269,13 +274,14 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
     usedNonces.add(nonceTracker);
 
     console.log(
-      `✓ Relayed tx ${tx.hash} for ${message.from} → ${
+      `✓ Relayed tx ${tx.hash} on chain ${chainId} for ${message.from} → ${
         message.to
       } (${message.value.toString()})`
     );
 
     return res.json({
       txHash: tx.hash,
+      chainId: chainId,
       success: true,
     });
   } catch (err: any) {
@@ -295,10 +301,23 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
  * Health check endpoint
  */
 app.get("/health", (_req: Request, res: Response) => {
+  const supportedChains: Record<
+    string,
+    { chainId: number; configured: boolean }
+  > = {};
+
+  for (const [name, chainId] of Object.entries(SUPPORTED_CHAINS)) {
+    try {
+      getRpcUrl(chainId);
+      supportedChains[name] = { chainId, configured: true };
+    } catch {
+      supportedChains[name] = { chainId, configured: false };
+    }
+  }
+
   res.json({
     ok: true,
-    relayer: relayer.address,
-    chainId: chainId || "initializing",
+    supportedChains,
   });
 });
 
@@ -308,30 +327,6 @@ app.listen(port, () => {
   console.log(`   Health: http://localhost:${port}/health`);
   console.log(`   Relay: POST http://localhost:${port}/erc3009/relay`);
   console.log(
-    `   Domain: GET http://localhost:${port}/api/tokenDomain?token=<address>\n`
+    `   Domain: GET http://localhost:${port}/api/tokenDomain?token=<address>&chainId=<chainId>\n`
   );
 });
-
-/**
- * Parse comma-separated allowlist of token addresses
- */
-function parseAllowlist(raw?: string | null): Set<string> | null {
-  if (!raw) return null;
-  return new Set(
-    raw
-      .split(",")
-      .map((v) => normalizeAddress(v.trim()))
-      .filter(Boolean)
-  );
-}
-
-/**
- * Get required environment variable or throw
- */
-function requiredEnv(key: string): string {
-  const val = process.env[key];
-  if (!val) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  return val;
-}
