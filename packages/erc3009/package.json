@@ -1,6 +1,6 @@
 {
   "name": "@seapay-ai/erc3009",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "description": "TypeScript utilities for ERC-3009 (Transfer With Authorization) EIP-712 signing",
   "keywords": [
     "erc3009",
