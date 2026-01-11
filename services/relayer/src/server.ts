@@ -224,11 +224,11 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "authorization expired" });
     }
 
-    // Verify signature using erc3009 package
-    const isValid = verifySignature(domain, message, signature, message.from);
-    if (!isValid) {
-      return res.status(400).json({ error: "invalid signature" });
-    }
+    // // Verify signature using erc3009 package
+    // const isValid = verifySignature(domain, message, signature, message.from);
+    // if (!isValid) {
+    //   return res.status(400).json({ error: "invalid signature" });
+    // }
 
     // Check nonce replay protection (chain-specific)
     const nonceTracker = nonceKey(
