@@ -12,7 +12,7 @@ import QRCodeStyling from "qr-code-styling";
  */
 export function useStyledQrCode(
   data: string | null | undefined,
-  containerRef: RefObject<HTMLDivElement>,
+  containerRef: RefObject<HTMLDivElement | null>,
   options?: StyledQrOptions
 ) {
   const qrCodeInstanceRef = useRef<ReturnType<typeof createStyledQrCode> | null>(null);
