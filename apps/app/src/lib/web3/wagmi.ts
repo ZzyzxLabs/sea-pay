@@ -1,6 +1,6 @@
 import { createConfig, http , type Transport } from "wagmi";
 import { chains } from "./chains";
-import { metaMask, coinbaseWallet } from "wagmi/connectors";
+import { metaMask, coinbaseWallet, injected } from "wagmi/connectors";
 
 // const MAINNET_RPC = process.env.NEXT_PUBLIC_MAINNET_RPC_URL!;
 // const SEPOLIA_RPC = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL!;
@@ -27,6 +27,8 @@ export const config = createConfig({
       appName: "SeaPay",
       appLogoUrl: "https://seapay.ai/logo.png",
     }),
+
+    // injected(),
 
   ],
   transports: transports,
