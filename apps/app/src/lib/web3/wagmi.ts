@@ -16,11 +16,11 @@ export const config = createConfig({
   chains: chains,
   connectors: [
     // MetaMask SDK connector
-    // metaMask({
-    //   // Optional: only needed if you want the MetaMask SDK itself to do read-only RPC via Infura.
-    //   // If you already supply your own RPCs in `transports`, you can omit this.
-    //   infuraAPIKey: process.env.NEXT_PUBLIC_INFURA_API_KEY,
-    // }),
+    metaMask({
+      // Optional: only needed if you want the MetaMask SDK itself to do read-only RPC via Infura.
+      // If you already supply your own RPCs in `transports`, you can omit this.
+      infuraAPIKey: process.env.NEXT_PUBLIC_INFURA_API_KEY,
+    }),
 
     // Coinbase Wallet connector
     coinbaseWallet({
@@ -28,7 +28,7 @@ export const config = createConfig({
       appLogoUrl: "https://seapay.ai/logo.png",
     }),
 
-    injected(),
+    // injected(),
 
   ],
   transports: transports,
