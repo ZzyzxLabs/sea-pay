@@ -94,8 +94,10 @@ const navItems: NavItem[] = [
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [email, setEmail] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -201,101 +203,119 @@ export function Header() {
 
           {/* Right: CTA */}
           <div className='absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 hidden items-center gap-3 md:flex'>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className='rounded-full shadow-sm shadow-sky-100 uppercase'>
-                  Sign up
-                </Button>
-              </DialogTrigger>
-              <DialogContent
-                className='max-w-4xl p-0 bg-stone-50'
-                showCloseButton={false}
-              >
-                <DialogHeader className='sr-only'>
-                  <DialogTitle>Sign up for newsletter</DialogTitle>
-                </DialogHeader>
-                <div className='flex flex-col gap-6 rounded-lg bg-stone-50 p-8'>
-                  <div className='space-y-1'>
-                    <p className='text-base text-slate-700 font-bold'>
-                      Sign up for our newsletter to hear our
-                    </p>
-                    <p className='text-base text-slate-700 font-bold'>
-                      latest product updates
-                    </p>
-                  </div>
-                  <form
-                    onSubmit={handleSubmit}
-                    className='flex items-center gap-0 rounded-lg bg-white shadow-sm'
-                  >
-                    <Input
-                      type='email'
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder='Enter email for updates*'
-                      required
-                      className='h-12 flex-1 rounded-l-lg rounded-r-none border-0 bg-white px-4 text-sm focus-visible:ring-0'
-                    />
-                    <Button
-                      type='submit'
-                      className='h-12 rounded-l-none rounded-r-lg bg-slate-200 px-6 text-sm font-medium uppercase text-slate-700 hover:bg-slate-300'
+            {mounted && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className='rounded-full shadow-sm shadow-sky-100 uppercase'>
+                    Sign up
+                  </Button>
+                </DialogTrigger>
+                <DialogContent
+                  className='max-w-4xl p-0 bg-stone-50'
+                  showCloseButton={false}
+                >
+                  <DialogHeader className='sr-only'>
+                    <DialogTitle>Sign up for newsletter</DialogTitle>
+                  </DialogHeader>
+                  <div className='flex flex-col gap-6 rounded-lg bg-stone-50 p-8'>
+                    <div className='space-y-1'>
+                      <p className='text-base text-slate-700 font-bold'>
+                        Sign up for our newsletter to hear our
+                      </p>
+                      <p className='text-base text-slate-700 font-bold'>
+                        latest product updates
+                      </p>
+                    </div>
+                    <form
+                      onSubmit={handleSubmit}
+                      className='flex items-center gap-0 rounded-lg bg-white shadow-sm'
                     >
-                      Submit
-                    </Button>
-                  </form>
-                </div>
-              </DialogContent>
-            </Dialog>
+                      <Input
+                        type='email'
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder='Enter email for updates*'
+                        required
+                        className='h-12 flex-1 rounded-l-lg rounded-r-none border-0 bg-white px-4 text-sm focus-visible:ring-0'
+                      />
+                      <Button
+                        type='submit'
+                        className='h-12 rounded-l-none rounded-r-lg bg-slate-200 px-6 text-sm font-medium uppercase text-slate-700 hover:bg-slate-300'
+                      >
+                        Submit
+                      </Button>
+                    </form>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+            {!mounted && (
+              <Button className='rounded-full shadow-sm shadow-sky-100 uppercase'>
+                Sign up
+              </Button>
+            )}
           </div>
 
           {/* Mobile: menu */}
           <div className='absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 md:hidden'>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  className='rounded-full'
-                  aria-label='Open menu'
-                >
-                  <Menu className='h-5 w-5' />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side='right' className='w-[320px]'>
-                <div className='flex flex-col gap-6 pt-6'>
-                  <div className='text-sm font-semibold text-slate-900'>
-                    Menu
-                  </div>
-                  <nav className='flex flex-col gap-3'>
-                    {navItems.map((item) => (
-                      <SheetClose asChild key={item.href}>
+            {mounted ? (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    className='rounded-full'
+                    aria-label='Open menu'
+                  >
+                    <Menu className='h-5 w-5' />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side='right' className='w-[320px]'>
+                  <div className='flex flex-col gap-6 pt-6'>
+                    <div className='text-sm font-semibold text-slate-900'>
+                      Menu
+                    </div>
+                    <nav className='flex flex-col gap-3'>
+                      {navItems.map((item) => (
+                        <SheetClose asChild key={item.href}>
+                          <Link
+                            href={item.href}
+                            className='text-base text-slate-800 hover:text-slate-950'
+                          >
+                            {item.label}
+                          </Link>
+                        </SheetClose>
+                      ))}
+                    </nav>
+                    <div className='h-px bg-slate-200' />
+                    <div className='flex flex-col gap-3'>
+                      <SheetClose asChild>
                         <Link
-                          href={item.href}
-                          className='text-base text-slate-800 hover:text-slate-950'
+                          href='#pricing'
+                          className='text-sm text-slate-700 hover:text-slate-900'
                         >
-                          {item.label}
+                          Pricing
                         </Link>
                       </SheetClose>
-                    ))}
-                  </nav>
-                  <div className='h-px bg-slate-200' />
-                  <div className='flex flex-col gap-3'>
-                    <SheetClose asChild>
-                      <Link
-                        href='#pricing'
-                        className='text-sm text-slate-700 hover:text-slate-900'
-                      >
-                        Pricing
-                      </Link>
-                    </SheetClose>
-                    <SheetClose asChild>
-                      <Button className='w-full rounded-full shadow-sm shadow-sky-100'>
-                        <a href='#cta'>Get started</a>
-                      </Button>
-                    </SheetClose>
+                      <SheetClose asChild>
+                        <Button className='w-full rounded-full shadow-sm shadow-sky-100'>
+                          <a href='#cta'>Get started</a>
+                        </Button>
+                      </SheetClose>
+                    </div>
                   </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+                </SheetContent>
+              </Sheet>
+            ) : (
+              <Button
+                variant='ghost'
+                size='icon'
+                className='rounded-full'
+                aria-label='Open menu'
+              >
+                <Menu className='h-5 w-5' />
+              </Button>
+            )}
           </div>
         </div>
       </div>
