@@ -10,15 +10,82 @@ type TokenOption = {
   value: string;
 };
 
+type IconPairProps = {
+  token: string;
+  chain: string;
+  tokenSize?: number;
+  chainSize?: number;
+};
+
+const tokenIconMap: Record<string, string> = {
+  USDC: "/usdc-logo.svg",
+  USDT: "/tether-logo.svg",
+};
+
+const chainIconMap: Record<string, string> = {
+  BASE: "/base-chain-icon.svg",
+  BNB: "/bnb-chain-icon.svg",
+  Ethereum: "/ethereum-icon.svg",
+  Polygon: "/polygon-icon.svg",
+};
+
+function IconPair({
+  token,
+  chain,
+  tokenSize = 40,
+  chainSize = 16,
+}: IconPairProps) {
+  const tokenIcon = tokenIconMap[token];
+  const chainIcon = chainIconMap[chain] || chainIconMap[chain.toUpperCase()];
+
+  return (
+    <div
+      className='relative inline-flex'
+      style={{ width: tokenSize, height: tokenSize }}
+    >
+      {tokenIcon ? (
+        <Image
+          src={tokenIcon}
+          alt={token}
+          width={tokenSize}
+          height={tokenSize}
+          className='rounded-lg object-contain'
+        />
+      ) : (
+        <div
+          className='flex h-full w-full items-center justify-center rounded-lg bg-slate-200 text-xs font-semibold text-slate-700'
+          aria-label={token}
+        >
+          {token.slice(0, 3)}
+        </div>
+      )}
+
+      {chainIcon ? (
+        <Image
+          src={chainIcon}
+          alt={chain}
+          width={chainSize}
+          height={chainSize}
+          className='absolute -bottom-1 -right-1 rounded-full object-contain'
+        />
+      ) : (
+        <div className='absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-500 text-[10px] font-semibold text-white'>
+          {chain.slice(0, 1)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type TokenSelectorProps = {
   value: string;
-  onChange: (value: string) => void;
+  onChangeAction: (value: string) => void;
   options: TokenOption[];
 };
 
 export function TokenSelector({
   value,
-  onChange,
+  onChangeAction,
   options,
 }: TokenSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -26,121 +93,28 @@ export function TokenSelector({
   const selectedOption =
     options.find((opt) => opt.value === value) || options[0];
 
-  const formatOption = (option: TokenOption) => {
-    return (
-      <>
-        {option.token === "USDC" && (
-          <Image
-            src='/usdc-logo.svg'
-            alt='USDC'
-            width={14}
-            height={14}
-            className='inline-block'
-          />
-        )}
-        {option.token === "USDT" && (
-          <Image
-            src='/tether-logo.svg'
-            alt='USDT'
-            width={14}
-            height={14}
-            className='inline-block'
-          />
-        )}
-        <span
-          className={
-            option.token === "USDC" || option.token === "USDT" ? "ml-1.5" : ""
-          }
-        >
-          {option.token} on
+  const formatOption = (option: TokenOption) => (
+    <div className='flex items-center gap-2'>
+      <IconPair token={option.token} chain={option.blockchain} />
+      <div className='flex flex-col items-start leading-tight'>
+        <span className='text-left text-base font-bold text-slate-900 sm:text-lg'>
+          {option.token}
         </span>
-        {option.blockchain === "BASE" && (
-          <>
-            <Image
-              src='/base-logo.svg'
-              alt='Base'
-              width={14}
-              height={14}
-              className='inline-block ml-1.5'
-            />
-            <span className='ml-1.5'>{option.blockchain}</span>
-          </>
-        )}
-        {option.blockchain === "BNB" && (
-          <>
-            <Image
-              src='/bnb-logo.svg'
-              alt='BNB'
-              width={14}
-              height={14}
-              className='inline-block ml-1.5'
-            />
-            <span className='ml-1.5'>{option.blockchain}</span>
-          </>
-        )}
-        {option.blockchain !== "BASE" && option.blockchain !== "BNB" && (
-          <span className='ml-1.5'>{option.blockchain}</span>
-        )}
-      </>
-    );
-  };
+        <span className='text-left text-sm font-medium text-slate-500 sm:text-base'>
+          {option.blockchain}
+        </span>
+      </div>
+    </div>
+  );
 
   return (
     <div className='relative'>
       <button
         type='button'
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className='flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-base font-medium shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]'
+        className='flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-transparent px-3 text-base font-medium shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]'
       >
-        <span className='flex items-center gap-1.5'>
-          {selectedOption.token === "USDC" && (
-            <Image
-              src='/usdc-logo.svg'
-              alt='USDC'
-              width={14}
-              height={14}
-              className='inline-block'
-            />
-          )}
-          {selectedOption.token === "USDT" && (
-            <Image
-              src='/tether-logo.svg'
-              alt='USDT'
-              width={14}
-              height={14}
-              className='inline-block'
-            />
-          )}
-          <span>{selectedOption.token} on</span>
-          {selectedOption.blockchain === "BASE" && (
-            <>
-              <Image
-                src='/base-logo.svg'
-                alt='Base'
-                width={14}
-                height={14}
-                className='inline-block'
-              />
-              <span>{selectedOption.blockchain}</span>
-            </>
-          )}
-          {selectedOption.blockchain === "BNB" && (
-            <>
-              <Image
-                src='/bnb-logo.svg'
-                alt='BNB'
-                width={14}
-                height={14}
-                className='inline-block'
-              />
-              <span>{selectedOption.blockchain}</span>
-            </>
-          )}
-          {selectedOption.blockchain !== "BASE" &&
-            selectedOption.blockchain !== "BNB" && (
-              <span>{selectedOption.blockchain}</span>
-            )}
-        </span>
+        {formatOption(selectedOption)}
         <ChevronDown
           className={`h-4 w-4 text-slate-400 transition-transform ${
             isDropdownOpen ? "rotate-180" : ""
@@ -159,10 +133,10 @@ export function TokenSelector({
                 key={option.value}
                 type='button'
                 onClick={() => {
-                  onChange(option.value);
+                  onChangeAction(option.value);
                   setIsDropdownOpen(false);
                 }}
-                className='flex w-full items-center gap-1.5 px-3 py-2 text-left text-sm font-medium text-slate-900 hover:bg-slate-50 first:rounded-t-md last:rounded-b-md'
+                className='flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-slate-900 hover:bg-slate-50 first:rounded-t-md last:rounded-b-md'
               >
                 {formatOption(option)}
               </button>

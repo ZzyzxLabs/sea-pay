@@ -4,284 +4,106 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { buildDeeplinkUrl } from "@seapay/deeplink";
 import QRCodeStyling from "qr-code-styling";
-import {
-  Banknote,
-  Lock,
-  Sparkles,
-  ChevronDown,
-  ArrowRight,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/container";
 import { TokenSelector } from "./token-selector";
-
-type FormStatus = "idle" | "submitting" | "success" | "error";
+import { WalletButtons } from "./wallet-buttons";
 
 export function Hero() {
-  const [email, setEmail] = useState("");
-  const [formStatus, setFormStatus] = useState<FormStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [utmParams, setUtmParams] = useState<Record<string, string>>({});
-
-  // Extract UTM parameters from URL on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const utm: Record<string, string> = {};
-
-      [
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_term",
-        "utm_content",
-      ].forEach((key) => {
-        const value = params.get(key);
-        if (value) utm[key] = value;
-      });
-
-      setUtmParams(utm);
-    }
-  }, []);
-
-  // Email validation
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Reset error state
-    setErrorMessage("");
-
-    // Validate email
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setErrorMessage("Email is required");
-      setFormStatus("error");
-      return;
-    }
-
-    if (!validateEmail(trimmedEmail)) {
-      setErrorMessage("Please enter a valid email address");
-      setFormStatus("error");
-      return;
-    }
-
-    // Prevent double submission
-    if (formStatus === "submitting") {
-      return;
-    }
-
-    setFormStatus("submitting");
-
-    try {
-      const response = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          source: "website",
-          ...utmParams,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Provide user-friendly error message
-        const errorMessage =
-          data.error ||
-          "Unable to sign up at this time. Please try again later.";
-        throw new Error(errorMessage);
-      }
-
-      setFormStatus("success");
-      setEmail("");
-
-      // Reset success message after 5 seconds
-      setTimeout(() => {
-        setFormStatus("idle");
-      }, 5000);
-    } catch (error) {
-      console.error("Waitlist signup error:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong. Please try again."
-      );
-      setFormStatus("error");
-    }
-  };
-
   return (
     <section id='hero' className='relative overflow-hidden'>
-      <Container className='grid items-start gap-6 pb-10 pt-8 lg:grid-cols-[1.1fr_0.9fr]'>
+      <Container className='grid items-start gap-4 pb-6 pt-8 sm:gap-6 sm:pb-10 sm:pt-12 lg:grid-cols-[1.1fr_0.9fr] lg:pt-[60px]'>
         <div className='absolute -left-20 top-8 gradient-blob' aria-hidden />
         <div
           className='absolute right-[-160px] top-32 gradient-blob'
           aria-hidden
         />
-        <div className='relative z-10 space-y-6'>
-          <h1 className='text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl'>
-            Accept stablecoins. <br className='hidden sm:inline' />
-            No gas needed.
+        <div className='relative z-10 space-y-4 sm:space-y-6'>
+          <h1 className='text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-5xl'>
+            Send / Receive stablecoins. <br className='hidden sm:inline' />
+            No gas needed. <br className='hidden sm:inline' />
+            <span className='text-slate-600'>Now free.</span>
           </h1>
-          <p className='max-w-xl text-lg text-slate-600'>
-            Seapay lets internet businesses spin up compliant stablecoin
-            checkout links, collect from global customers, and receive
-            predictable settlement with clear webhooks.
+          <p className='max-w-xl text-base text-slate-600 sm:text-lg'>
+            Spending stablecoins has been painful without gas. Seapay solves the
+            biggest problem in Web3. Now you can get paid in stablecoins using
+            all kind of wallets without gas.
           </p>
-          <div className='flex flex-wrap gap-3'>
-            <Button size='lg' className='shadow-sm shadow-sky-100' asChild>
-              <a href='#cta'>Create a payment link</a>
-            </Button>
-            <Button
-              size='lg'
-              variant='outline'
-              className='border-sky-200'
-              asChild
-            >
-              <a
-                href='https://docs.seapay.example'
-                target='_blank'
-                rel='noreferrer'
-              >
-                View docs
-              </a>
-            </Button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size='lg' variant='ghost' className='text-slate-700'>
-                  Preview sandbox
-                </Button>
-              </DialogTrigger>
-              <DialogContent className='glass'>
-                <DialogHeader>
-                  <DialogTitle>Sandbox checkout</DialogTitle>
-                  <DialogDescription>
-                    Spin up a test payment link, settle to a test wallet, and
-                    simulate webhook delivery in under a minute.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className='space-y-2 rounded-lg border border-slate-200/80 bg-slate-50 px-4 py-3 text-sm text-slate-700'>
-                  <div className='flex items-center justify-between'>
-                    <span className='text-slate-500'>Amount</span>
-                    <span className='font-semibold text-slate-900'>
-                      $150.00 USDC
-                    </span>
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <span className='text-slate-500'>Network</span>
-                    <span className='font-medium text-slate-900'>
-                      Base mainnet
-                    </span>
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <span className='text-slate-500'>Webhook</span>
-                    <span className='rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700'>
-                      200 ms delivery
-                    </span>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button className='w-full' asChild>
-                    <a href='#cta'>Start sandbox</a>
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          <div className='flex flex-wrap gap-4 text-sm text-slate-600'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 shadow-sm shadow-sky-50 ring-1 ring-slate-200'>
-              <Lock className='h-4 w-4 text-sky-600' /> Non-custodial by design
-            </span>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 shadow-sm shadow-sky-50 ring-1 ring-slate-200'>
-              <Sparkles className='h-4 w-4 text-sky-600' /> Ready for POS &
-              online
-            </span>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 shadow-sm shadow-sky-50 ring-1 ring-slate-200'>
-              <Banknote className='h-4 w-4 text-sky-600' /> Fees from 0.5% +
-              network
-            </span>
-          </div>
 
-          {/* Signup Panel */}
-          <div className='flex flex-col gap-4 rounded-lg bg-card p-6'>
-            <div className='space-y-1'>
-              <p className='text-base text-slate-700 font-bold'>
-                Sign up for our newsletter to hear our
-              </p>
-              <p className='text-base text-slate-700 font-bold'>
-                latest product updates
-              </p>
+          {/* Supported Chains */}
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className='text-xs font-medium text-slate-500 sm:text-sm'>
+              Supported chains:
+            </span>
+            <div className='flex flex-wrap items-center gap-2'>
+              <Badge
+                variant='outline'
+                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
+              >
+                <Image
+                  src='/ethereum-icon.svg'
+                  alt='Ethereum'
+                  width={14}
+                  height={14}
+                  className='inline-block'
+                />
+                <span>Ethereum</span>
+              </Badge>
+              <Badge
+                variant='outline'
+                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
+              >
+                <Image
+                  src='/base-chain-icon.svg'
+                  alt='Base'
+                  width={14}
+                  height={14}
+                  className='inline-block'
+                />
+                <span>Base</span>
+              </Badge>
+              <Badge
+                variant='outline'
+                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
+              >
+                <Image
+                  src='/polygon-icon.svg'
+                  alt='Polygon'
+                  width={14}
+                  height={14}
+                  className='inline-block'
+                />
+                <span>Polygon</span>
+              </Badge>
+              <Badge
+                variant='outline'
+                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
+              >
+                <Image
+                  src='/solana-logo.svg'
+                  alt='Solana'
+                  width={14}
+                  height={14}
+                  className='inline-block'
+                />
+                <span>Solana</span>
+              </Badge>
+              <Badge
+                variant='outline'
+                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
+              >
+                <Image
+                  src='/bnb-logo.svg'
+                  alt='BNB Chain'
+                  width={14}
+                  height={14}
+                  className='inline-block'
+                />
+                <span>BNB Chain</span>
+              </Badge>
             </div>
-            {formStatus === "success" ? (
-              <div className='flex items-center gap-2 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700'>
-                <CheckCircle2 className='h-5 w-5 flex-shrink-0' />
-                <span className='font-medium'>
-                  Successfully added to waitlist!
-                </span>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className='flex flex-col gap-2'>
-                <div className='flex items-center gap-0 rounded-lg bg-white shadow-sm'>
-                  <Input
-                    type='email'
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      // Clear error when user starts typing
-                      if (formStatus === "error") {
-                        setFormStatus("idle");
-                        setErrorMessage("");
-                      }
-                    }}
-                    placeholder='Enter email for updates*'
-                    required
-                    disabled={formStatus === "submitting"}
-                    className='h-12 flex-1 rounded-l-lg rounded-r-none border-0 bg-white px-4 text-sm focus-visible:ring-0 disabled:opacity-50 disabled:cursor-not-allowed'
-                    aria-invalid={formStatus === "error"}
-                  />
-                  <Button
-                    type='submit'
-                    disabled={formStatus === "submitting"}
-                    className='h-12 rounded-l-none rounded-r-lg bg-slate-200 px-6 text-sm font-medium uppercase text-slate-700 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed'
-                  >
-                    {formStatus === "submitting" ? "..." : "Submit"}
-                  </Button>
-                </div>
-                {formStatus === "error" && errorMessage && (
-                  <div className='flex items-center gap-2 text-sm text-red-600'>
-                    <AlertCircle className='h-4 w-4 flex-shrink-0' />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
-              </form>
-            )}
           </div>
         </div>
         <CheckoutDemo />
@@ -291,18 +113,54 @@ export function Hero() {
 }
 
 function CheckoutDemo() {
-  const [amount, setAmount] = useState("1");
-  const [fiatCurrency, setFiatCurrency] = useState<"USD" | "EUR">("USD");
+  const [amount, setAmount] = useState("");
+  const [fiatCurrency] = useState<"USD" | "EUR">("USD");
   const [currency, setCurrency] = useState("USDC-BASE");
   const [receiver, setReceiver] = useState("");
-  const [isFiatDropdownOpen, setIsFiatDropdownOpen] = useState(false);
   const [cryptoPrice, setCryptoPrice] = useState<number>(1);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
   const qrCodeInstance = useRef<QRCodeStyling | null>(null);
+  const [qrSize, setQrSize] = useState(300);
 
-  const fiatAmount = parseFloat(amount) || 0;
+  // Calculate responsive QR code size
+  useEffect(() => {
+    const updateQrSize = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        // Mobile: smaller QR code
+        setQrSize(240);
+      } else if (width < 1024) {
+        // Tablet: medium QR code
+        setQrSize(280);
+      } else {
+        // Desktop: full size
+        setQrSize(300);
+      }
+    };
+
+    updateQrSize();
+    window.addEventListener("resize", updateQrSize);
+    return () => window.removeEventListener("resize", updateQrSize);
+  }, []);
+
+  // Parse amount by removing commas
+  const parseAmount = (value: string): number => {
+    const cleaned = value.replace(/,/g, "");
+    return parseFloat(cleaned) || 0;
+  };
+
+  const fiatAmount = parseAmount(amount);
   const cryptoAmount = cryptoPrice > 0 ? fiatAmount / cryptoPrice : 0;
+
+  // Validate Ethereum address
+  const isValidEthereumAddress = (address: string): boolean => {
+    // Ethereum addresses are 42 characters: 0x followed by 40 hex characters
+    const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
+    return ethereumAddressRegex.test(address);
+  };
+
+  const isReceiverValid = isValidEthereumAddress(receiver);
 
   // Fetch crypto price from CoinGecko
   useEffect(() => {
@@ -374,8 +232,8 @@ function CheckoutDemo() {
         // Create or update QR code with styling
         if (!qrCodeInstance.current) {
           qrCodeInstance.current = new QRCodeStyling({
-            width: 300,
-            height: 300,
+            width: qrSize,
+            height: qrSize,
             data: deeplinkUrl,
             margin: 4,
             qrOptions: {
@@ -407,6 +265,8 @@ function CheckoutDemo() {
         } else {
           qrCodeInstance.current.update({
             data: deeplinkUrl,
+            width: qrSize,
+            height: qrSize,
           });
         }
 
@@ -421,134 +281,89 @@ function CheckoutDemo() {
     };
 
     generateQrCode();
-  }, [receiver, amount, currency, cryptoAmount]);
+  }, [receiver, amount, currency, cryptoAmount, qrSize]);
 
   const tokenOptions = [
     { token: "USDC", blockchain: "BASE", value: "USDC-BASE" },
     { token: "USDT", blockchain: "BNB", value: "USDT-BNB" },
   ];
 
+  const formatAmount = (value: string): string => {
+    // Remove all non-digit characters except decimal point
+    const cleaned = value.replace(/[^\d.]/g, "");
+
+    // Split by decimal point
+    const parts = cleaned.split(".");
+
+    // Format integer part with commas
+    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    // Limit decimal part to 2 digits
+    const decimalPart = parts[1] ? parts[1].slice(0, 2) : "";
+
+    // Combine
+    if (decimalPart) {
+      return `${integerPart}.${decimalPart}`;
+    } else if (cleaned.includes(".")) {
+      return `${integerPart}.`;
+    } else {
+      return integerPart;
+    }
+  };
+
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow empty string, numbers, and decimal point
-    if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
-      setAmount(value);
+
+    // Allow empty string
+    if (value === "") {
+      setAmount("");
+      return;
     }
+
+    // Format the value
+    const formatted = formatAmount(value);
+    setAmount(formatted);
   };
 
   return (
     <Card className='relative z-10 glass border-slate-200/60'>
-      <CardContent className='space-y-4 pt-4 pb-6'>
+      <CardContent className='space-y-3 pt-3 pb-4 sm:space-y-4 sm:pt-4 sm:pb-6'>
         {/* QR Code Display Area */}
-        <div className='flex items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 mx-auto p-1 w-[316px] h-[316px]'>
+        <div className='flex items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 mx-auto p-1 w-full max-w-[256px] aspect-square sm:max-w-[296px] lg:max-w-[316px]'>
           <div
             ref={qrCodeRef}
-            className='flex items-center justify-center'
+            className='flex items-center justify-center w-full h-full'
           />
         </div>
 
-        {/* Input Fields */}
-        <div className='flex items-center gap-3'>
-          {/* Fiat Currency Selector */}
-          <div className='relative flex-shrink-0'>
-            <button
-              type='button'
-              onClick={() => setIsFiatDropdownOpen(!isFiatDropdownOpen)}
-              className='flex h-10 items-center justify-between gap-2 rounded-lg border-0 bg-slate-100 px-3 py-2 text-base font-medium text-slate-900 transition-colors hover:bg-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
-            >
-              <span className='flex items-center gap-2'>
-                {fiatCurrency === "USD" && (
-                  <Image
-                    src='/usd-logo.svg'
-                    alt='USD'
-                    width={20}
-                    height={20}
-                    className='inline-block rounded-full'
-                  />
-                )}
-                {fiatCurrency === "EUR" && (
-                  <Image
-                    src='/eur-logo.svg'
-                    alt='EUR'
-                    width={20}
-                    height={20}
-                    className='inline-block rounded-full'
-                  />
-                )}
-                <span>{fiatCurrency}</span>
+        {/* Money Input and Token Selector */}
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+          {/* Money Input Box - 50% width */}
+          <div className='flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden flex-1 h-14'>
+            {/* Currency Symbol Segment */}
+            <div className='flex items-center justify-center h-14 pl-5 pr-4 bg-slate-100 border-r border-slate-200 sm:pl-6 sm:pr-5'>
+              <span className='text-lg font-bold text-slate-900 sm:text-xl'>
+                $
               </span>
-              <ChevronDown
-                className={`h-4 w-4 text-emerald-600 transition-transform ${
-                  isFiatDropdownOpen ? "rotate-180" : ""
-                }`}
+            </div>
+            {/* Amount Input */}
+            <div className='flex-1'>
+              <Input
+                type='text'
+                inputMode='decimal'
+                value={amount}
+                onChange={handleAmountChange}
+                placeholder='1,000.00'
+                className='h-14 border-0 rounded-none text-base font-semibold text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none sm:text-lg'
               />
-            </button>
-            {isFiatDropdownOpen && (
-              <>
-                <div
-                  className='fixed inset-0 z-10'
-                  onClick={() => setIsFiatDropdownOpen(false)}
-                />
-                <div className='absolute top-full z-20 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg'>
-                  <button
-                    type='button'
-                    onClick={() => {
-                      setFiatCurrency("USD");
-                      setIsFiatDropdownOpen(false);
-                    }}
-                    className='flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-slate-900 hover:bg-slate-50 first:rounded-t-md last:rounded-b-md'
-                  >
-                    <Image
-                      src='/usd-logo.svg'
-                      alt='USD'
-                      width={20}
-                      height={20}
-                      className='inline-block rounded-full'
-                    />
-                    <span>USD</span>
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => {
-                      setFiatCurrency("EUR");
-                      setIsFiatDropdownOpen(false);
-                    }}
-                    className='flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-slate-900 hover:bg-slate-50 first:rounded-t-md last:rounded-b-md'
-                  >
-                    <Image
-                      src='/eur-logo.svg'
-                      alt='EUR'
-                      width={20}
-                      height={20}
-                      className='inline-block rounded-full'
-                    />
-                    <span>EUR</span>
-                  </button>
-                </div>
-              </>
-            )}
+            </div>
           </div>
 
-          {/* Amount Input */}
-          <div className='flex-shrink-0 w-24'>
-            <Input
-              type='text'
-              inputMode='decimal'
-              value={amount}
-              onChange={handleAmountChange}
-              placeholder='1,000.00'
-              className='h-10 text-base font-medium text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-            />
-          </div>
-
-          {/* Arrow */}
-          <ArrowRight className='h-5 w-5 text-slate-400 flex-shrink-0' />
-
-          {/* Currency/Network Dropdown */}
+          {/* Crypto Currency Selector - 50% width */}
           <div className='flex-1'>
             <TokenSelector
               value={currency}
-              onChange={setCurrency}
+              onChangeAction={setCurrency}
               options={tokenOptions}
             />
           </div>
@@ -557,29 +372,44 @@ function CheckoutDemo() {
         {/* Transaction Details */}
         <div className='space-y-2'>
           {/* Receiver */}
-          <div className='rounded-lg border border-slate-200 bg-white px-4 py-3'>
-            <div className='flex items-center justify-between gap-2'>
-              <span className='text-base font-medium text-slate-700'>
-                Receiver:
-              </span>
+          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
+            <div className='flex w-full items-center justify-between gap-3'>
+              {isReceiverValid ? (
+                <Image
+                  src='/ethereum-icon.svg'
+                  alt='Ethereum'
+                  width={24}
+                  height={24}
+                  className='flex-shrink-0'
+                />
+              ) : (
+                <span className='text-sm font-bold text-slate-900 sm:text-base'>
+                  Receiver:
+                </span>
+              )}
               <Input
                 type='text'
                 value={receiver}
-                onChange={(e) => setReceiver(e.target.value)}
-                placeholder='0x0000000000000000000000000000000000000000'
-                className='h-8 flex-1 border-0 bg-transparent p-0 text-left text-base font-mono text-slate-900 focus-visible:ring-0 placeholder:text-left'
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setReceiver(e.target.value)
+                }
+                placeholder='EVM (0x...) / Solana / Bitcoin address...'
+                className='h-14 flex-1 border-0 bg-transparent p-0 text-left text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 placeholder:text-left sm:text-base'
               />
             </div>
           </div>
 
-          {/* Quote with Submit Button */}
-          <div className='flex items-center gap-2'>
-            <div className='flex-1 rounded-lg border border-slate-200 bg-white px-4 py-3'>
-              <div className='flex items-center gap-2 text-base font-medium text-slate-900'>
-                <span>
-                  Quote: {amount || "0"} {fiatCurrency} →{" "}
-                  {isLoadingPrice ? "..." : cryptoAmount.toFixed(6)}
-                </span>
+          {/* Quote */}
+          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
+            <div className='flex flex-wrap items-center gap-2 text-sm text-slate-900 sm:gap-2.5 sm:text-base'>
+              <span className='whitespace-nowrap font-bold'>Quote:</span>
+              <span className='whitespace-nowrap font-medium'>
+                {amount || "0"} {fiatCurrency} →
+              </span>
+              <span className='whitespace-nowrap font-medium'>
+                {isLoadingPrice ? "..." : cryptoAmount.toFixed(2)}
+              </span>
+              <div className='flex items-center gap-1.5 font-medium'>
                 <Image
                   src={
                     currency.startsWith("USDC")
@@ -587,21 +417,17 @@ function CheckoutDemo() {
                       : "/tether-logo.svg"
                   }
                   alt={currency.split("-")[0]}
-                  width={16}
-                  height={16}
-                  className='inline-block'
+                  width={18}
+                  height={18}
+                  className='inline-block sm:w-5 sm:h-5'
                 />
                 <span>{currency.split("-")[0]}</span>
               </div>
             </div>
-            <Button
-              size='sm'
-              className='bg-black text-white hover:bg-slate-800'
-            >
-              Submit
-            </Button>
           </div>
         </div>
+
+        <WalletButtons />
       </CardContent>
     </Card>
   );
