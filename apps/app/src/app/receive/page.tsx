@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useFilteredWebSocket } from "@/hooks/useFilteredWebSocket";
 import Link from "next/link";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import QRCode from "qrcode";
+import { buildDeeplinkUrl } from "@seapay/deeplink";
+import { useStyledQrCode } from "@seapay/deeplink/react";
 
 export default function ReceivePage() {
   const [walletAddress, setWalletAddress] = useState("");
@@ -18,7 +19,8 @@ export default function ReceivePage() {
   );
   const [lastSender, setLastSender] = useState<string | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [deeplinkUrl, setDeeplinkUrl] = useState<string | null>(null);
+  const qrContainerRef = useRef<HTMLDivElement>(null);
   const [filterConfig, setFilterConfig] = useState<{
     address: string;
     amount: number;
@@ -51,6 +53,12 @@ export default function ReceivePage() {
   })();
 
   const { status, activities } = useFilteredWebSocket(filterConfig);
+
+  // Render styled QR code
+  useStyledQrCode(deeplinkUrl, qrContainerRef, {
+    width: 200,
+    height: 200,
+  });
 
   const handleStartMonitoring = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,28 +106,15 @@ export default function ReceivePage() {
       };
       setFilterConfig(config);
 
-      // Generate QR code for payment link
+      // Generate deeplink URL for QR code
       const params = new URLSearchParams();
       params.set("address", config.address);
       params.set("amount", String(config.amount));
       params.set("asset", config.asset);
       const fullUrl = `${window.location.origin}/pay-mobile?${params.toString()}`;
-      const encodedUrl = encodeURIComponent(fullUrl);
-      const deeplinkurl = `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`
+      const deeplinkurl = buildDeeplinkUrl(fullUrl);
       console.log("Generated deeplink URL:", deeplinkurl);
-      try {
-        const qrDataUrl = await QRCode.toDataURL(deeplinkurl, {
-          width: 200,
-          margin: 2,
-          color: {
-            dark: "#000000",
-            light: "#ffffff",
-          },
-        });
-        setQrCodeDataUrl(qrDataUrl);
-      } catch (qrError) {
-        console.error("Error generating QR code:", qrError);
-      }
+      setDeeplinkUrl(deeplinkurl);
 
       setIsMonitoring(true);
       setMatchPhase("loading");
@@ -167,6 +162,7 @@ export default function ReceivePage() {
       setIsMonitoring(false);
       setMatchPhase("idle");
       setIsPopupOpen(false);
+      setDeeplinkUrl(null);
     } catch (err) {
       console.error("Error removing address from webhook:", err);
       setError(
@@ -392,15 +388,16 @@ export default function ReceivePage() {
                   loop={false}
                   className="modal-lottie"
                 />
-              ) : qrCodeDataUrl ? (
-                <img
-                  src={qrCodeDataUrl}
-                  alt="Payment QR Code"
+              ) : deeplinkUrl ? (
+                <div
+                  ref={qrContainerRef}
                   style={{
                     width: "200px",
                     height: "200px",
                     margin: "0 auto",
-                    display: "block",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
                   }}
                 />
               ) : (
