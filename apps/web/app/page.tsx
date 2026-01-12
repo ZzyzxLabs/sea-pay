@@ -5,6 +5,7 @@ import { Footer } from "@/components/sections/footer";
 import { Header } from "@/components/sections/header";
 import { Hero } from "@/components/sections/hero";
 import { HowItWorks } from "@/components/sections/how-it-works";
+import { NewsletterSignup } from "@/components/sections/newsletter-signup";
 import { Pricing } from "@/components/sections/pricing";
 import { Security } from "@/components/sections/security";
 
@@ -16,6 +17,7 @@ export default function Home() {
       <Header />
       <main className='relative z-10 space-y-20 pb-24 pt-16'>
         <Hero />
+        <NewsletterSignup />
         <Features />
         <HowItWorks />
         <Pricing />

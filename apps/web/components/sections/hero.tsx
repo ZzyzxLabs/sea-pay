@@ -4,8 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { buildDeeplinkUrl } from "@seapay/deeplink";
 import QRCodeStyling from "qr-code-styling";
-import { CheckCircle2, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,109 +11,7 @@ import { Container } from "@/components/container";
 import { TokenSelector } from "./token-selector";
 import { WalletButtons } from "./wallet-buttons";
 
-type FormStatus = "idle" | "submitting" | "success" | "error";
-
 export function Hero() {
-  const [email, setEmail] = useState("");
-  const [formStatus, setFormStatus] = useState<FormStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [utmParams, setUtmParams] = useState<Record<string, string>>({});
-
-  // Extract UTM parameters from URL on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const utm: Record<string, string> = {};
-
-      [
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_term",
-        "utm_content",
-      ].forEach((key) => {
-        const value = params.get(key);
-        if (value) utm[key] = value;
-      });
-
-      setUtmParams(utm);
-    }
-  }, []);
-
-  // Email validation
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Reset error state
-    setErrorMessage("");
-
-    // Validate email
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setErrorMessage("Email is required");
-      setFormStatus("error");
-      return;
-    }
-
-    if (!validateEmail(trimmedEmail)) {
-      setErrorMessage("Please enter a valid email address");
-      setFormStatus("error");
-      return;
-    }
-
-    // Prevent double submission
-    if (formStatus === "submitting") {
-      return;
-    }
-
-    setFormStatus("submitting");
-
-    try {
-      const response = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          source: "website",
-          ...utmParams,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Provide user-friendly error message
-        const errorMessage =
-          data.error ||
-          "Unable to sign up at this time. Please try again later.";
-        throw new Error(errorMessage);
-      }
-
-      setFormStatus("success");
-      setEmail("");
-
-      // Reset success message after 5 seconds
-      setTimeout(() => {
-        setFormStatus("idle");
-      }, 5000);
-    } catch (error) {
-      console.error("Waitlist signup error:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong. Please try again."
-      );
-      setFormStatus("error");
-    }
-  };
-
   return (
     <section id='hero' className='relative overflow-hidden'>
       <Container className='grid items-start gap-4 pb-6 pt-8 sm:gap-6 sm:pb-10 sm:pt-12 lg:grid-cols-[1.1fr_0.9fr] lg:pt-[60px]'>
@@ -126,14 +22,14 @@ export function Hero() {
         />
         <div className='relative z-10 space-y-4 sm:space-y-6'>
           <h1 className='text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-5xl'>
-            Accept stablecoins. <br className='hidden sm:inline' />
+            Send / Receive stablecoins. <br className='hidden sm:inline' />
             No gas needed. <br className='hidden sm:inline' />
             <span className='text-slate-600'>Now free.</span>
           </h1>
           <p className='max-w-xl text-base text-slate-600 sm:text-lg'>
-            Seapay lets internet businesses spin up compliant stablecoin
-            checkout links, collect from global customers, and receive
-            predictable settlement with clear webhooks.
+            Spending stablecoins has been painful without gas. Seapay solves the
+            biggest problem in Web3. Now you can get paid in stablecoins using
+            all kind of wallets without gas.
           </p>
 
           {/* Supported Chains */}
@@ -160,7 +56,7 @@ export function Hero() {
                 className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
               >
                 <Image
-                  src='/base-logo.svg'
+                  src='/base-chain-icon.svg'
                   alt='Base'
                   width={14}
                   height={14}
@@ -208,61 +104,6 @@ export function Hero() {
                 <span>BNB Chain</span>
               </Badge>
             </div>
-          </div>
-
-          {/* Signup Panel */}
-          <div className='flex flex-col gap-3 rounded-lg bg-card p-4 sm:gap-4 sm:p-6'>
-            <div className='space-y-1'>
-              <p className='text-sm text-slate-700 font-bold sm:text-base'>
-                Sign up for our newsletter to hear our
-              </p>
-              <p className='text-sm text-slate-700 font-bold sm:text-base'>
-                latest product updates
-              </p>
-            </div>
-            {formStatus === "success" ? (
-              <div className='flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-700 sm:p-4 sm:text-sm'>
-                <CheckCircle2 className='h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5' />
-                <span className='font-medium'>
-                  Successfully added to waitlist!
-                </span>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className='flex flex-col gap-2'>
-                <div className='flex flex-col gap-2 rounded-lg bg-white shadow-sm sm:flex-row sm:items-center sm:gap-0'>
-                  <Input
-                    type='email'
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      // Clear error when user starts typing
-                      if (formStatus === "error") {
-                        setFormStatus("idle");
-                        setErrorMessage("");
-                      }
-                    }}
-                    placeholder='Enter email for updates*'
-                    required
-                    disabled={formStatus === "submitting"}
-                    className='h-11 flex-1 rounded-lg border-0 bg-white px-3 text-sm focus-visible:ring-0 disabled:opacity-50 disabled:cursor-not-allowed sm:h-12 sm:rounded-l-lg sm:rounded-r-none sm:px-4'
-                    aria-invalid={formStatus === "error"}
-                  />
-                  <Button
-                    type='submit'
-                    disabled={formStatus === "submitting"}
-                    className='h-11 rounded-lg bg-slate-200 px-4 text-xs font-medium uppercase text-slate-700 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed sm:h-12 sm:rounded-l-none sm:rounded-r-lg sm:px-6 sm:text-sm'
-                  >
-                    {formStatus === "submitting" ? "..." : "Submit"}
-                  </Button>
-                </div>
-                {formStatus === "error" && errorMessage && (
-                  <div className='flex items-center gap-2 text-sm text-red-600'>
-                    <AlertCircle className='h-4 w-4 flex-shrink-0' />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
-              </form>
-            )}
           </div>
         </div>
         <CheckoutDemo />
@@ -498,10 +339,10 @@ function CheckoutDemo() {
         {/* Money Input and Token Selector */}
         <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
           {/* Money Input Box - 50% width */}
-          <div className='flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden flex-1'>
+          <div className='flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden flex-1 h-14'>
             {/* Currency Symbol Segment */}
-            <div className='flex items-center justify-center h-9 px-3 bg-slate-100 border-r border-slate-200 sm:h-10 sm:px-4'>
-              <span className='text-sm font-semibold text-slate-900 sm:text-base'>
+            <div className='flex items-center justify-center h-14 pl-5 pr-4 bg-slate-100 border-r border-slate-200 sm:pl-6 sm:pr-5'>
+              <span className='text-lg font-bold text-slate-900 sm:text-xl'>
                 $
               </span>
             </div>
@@ -513,7 +354,7 @@ function CheckoutDemo() {
                 value={amount}
                 onChange={handleAmountChange}
                 placeholder='1,000.00'
-                className='h-9 border-0 rounded-none text-sm font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none sm:h-10 sm:text-base'
+                className='h-14 border-0 rounded-none text-base font-semibold text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none sm:text-lg'
               />
             </div>
           </div>
@@ -522,7 +363,7 @@ function CheckoutDemo() {
           <div className='flex-1'>
             <TokenSelector
               value={currency}
-              onChange={setCurrency}
+              onChangeAction={setCurrency}
               options={tokenOptions}
             />
           </div>
@@ -531,41 +372,44 @@ function CheckoutDemo() {
         {/* Transaction Details */}
         <div className='space-y-2'>
           {/* Receiver */}
-          <div className='rounded-lg border border-slate-200 bg-white px-3 py-1.5 sm:px-4'>
-            <div className='flex items-center justify-between gap-2'>
+          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
+            <div className='flex w-full items-center justify-between gap-3'>
               {isReceiverValid ? (
                 <Image
                   src='/ethereum-icon.svg'
                   alt='Ethereum'
-                  width={18}
-                  height={18}
-                  className='flex-shrink-0 sm:w-5 sm:h-5'
+                  width={24}
+                  height={24}
+                  className='flex-shrink-0'
                 />
               ) : (
-                <span className='text-xs font-medium text-slate-700 sm:text-sm sm:font-normal'>
+                <span className='text-sm font-bold text-slate-900 sm:text-base'>
                   Receiver:
                 </span>
               )}
               <Input
                 type='text'
                 value={receiver}
-                onChange={(e) => setReceiver(e.target.value)}
-                placeholder='EVM address (0x...)'
-                className='h-7 flex-1 border-0 bg-transparent p-0 text-left text-xs font-mono text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 placeholder:text-left sm:h-8 sm:text-sm'
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setReceiver(e.target.value)
+                }
+                placeholder='EVM (0x...) / Solana / Bitcoin address...'
+                className='h-14 flex-1 border-0 bg-transparent p-0 text-left text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 placeholder:text-left sm:text-base'
               />
             </div>
           </div>
 
           {/* Quote */}
-          <div className='rounded-lg border border-slate-200 bg-white px-3 py-1.5 sm:px-4'>
-            <div className='min-h-[28px] flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-900 sm:h-8 sm:gap-2 sm:text-sm'>
-              <span className='whitespace-nowrap'>
-                Quote: {amount || "0"} {fiatCurrency} →
+          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
+            <div className='flex flex-wrap items-center gap-2 text-sm text-slate-900 sm:gap-2.5 sm:text-base'>
+              <span className='whitespace-nowrap font-bold'>Quote:</span>
+              <span className='whitespace-nowrap font-medium'>
+                {amount || "0"} {fiatCurrency} →
               </span>
-              <span className='whitespace-nowrap'>
+              <span className='whitespace-nowrap font-medium'>
                 {isLoadingPrice ? "..." : cryptoAmount.toFixed(2)}
               </span>
-              <div className='flex items-center gap-1'>
+              <div className='flex items-center gap-1.5 font-medium'>
                 <Image
                   src={
                     currency.startsWith("USDC")
@@ -573,9 +417,9 @@ function CheckoutDemo() {
                       : "/tether-logo.svg"
                   }
                   alt={currency.split("-")[0]}
-                  width={14}
-                  height={14}
-                  className='inline-block sm:w-4 sm:h-4'
+                  width={18}
+                  height={18}
+                  className='inline-block sm:w-5 sm:h-5'
                 />
                 <span>{currency.split("-")[0]}</span>
               </div>
