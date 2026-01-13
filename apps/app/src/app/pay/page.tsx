@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { buildDeeplinkUrl } from "@seapay/deeplink";
 import { chains } from "@/lib/web3/chains";
 import styles from "./pay.module.css";
 
-export default function PayPage() {
+function PayPageContent() {
   const searchParams = useSearchParams();
   const amount = searchParams.get("amount") || "0.00";
   const address = searchParams.get("address") || "";
@@ -146,5 +146,24 @@ export default function PayPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function PayPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div className={styles.headerContent}>
+            <h1 className={styles.logo}>SeaPay</h1>
+          </div>
+        </header>
+        <div className={styles.mainContent}>
+          <div>Loading...</div>
+        </div>
+      </div>
+    }>
+      <PayPageContent />
+    </Suspense>
   );
 }
