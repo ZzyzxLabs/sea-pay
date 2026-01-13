@@ -23,10 +23,11 @@ const tokenIconMap: Record<string, string> = {
 };
 
 const chainIconMap: Record<string, string> = {
-  BASE: "/base-chain-icon.svg",
+  Base: "/base-chain-icon.svg",
   BNB: "/bnb-chain-icon.svg",
   Ethereum: "/ethereum-icon.svg",
-  Polygon: "/polygon-icon.svg",
+  Polygon: "/polygon-chain-icon.svg",
+  Solana: "/solana-chain-icon.svg",
 };
 
 function IconPair({

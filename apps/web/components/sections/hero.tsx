@@ -22,14 +22,11 @@ export function Hero() {
         />
         <div className='relative z-10 space-y-4 sm:space-y-6'>
           <h1 className='text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-5xl'>
-            Send / Receive stablecoins. <br className='hidden sm:inline' />
-            No gas needed. <br className='hidden sm:inline' />
-            <span className='text-slate-600'>Now free.</span>
+            Sending payments should be free. <br className='hidden sm:inline' />
           </h1>
           <p className='max-w-xl text-base text-slate-600 sm:text-lg'>
-            Spending stablecoins has been painful without gas. Seapay solves the
-            biggest problem in Web3. Now you can get paid in stablecoins using
-            all kind of wallets without gas.
+            Seapay solves the biggest problem in Web3. Now you can get paid in
+            stablecoins using all kind of wallets without gas.
           </p>
 
           {/* Supported Chains */}
@@ -284,7 +281,10 @@ function CheckoutDemo() {
   }, [receiver, amount, currency, cryptoAmount, qrSize]);
 
   const tokenOptions = [
-    { token: "USDC", blockchain: "BASE", value: "USDC-BASE" },
+    { token: "USDC", blockchain: "Base", value: "USDC-BASE" },
+    { token: "USDC", blockchain: "Polygon", value: "USDC-POLYGON" },
+    { token: "USDC", blockchain: "Ethereum", value: "USDC-ETHEREUM" },
+    { token: "USDC", blockchain: "Solana", value: "USDC-SOLANA" },
     { token: "USDT", blockchain: "BNB", value: "USDT-BNB" },
   ];
 
