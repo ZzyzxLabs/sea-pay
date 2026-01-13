@@ -14,10 +14,10 @@ export default function ReceivePage() {
 
   const formatDisplay = (value: string): string => {
     if (value === "0" || value === "") {
-      return "0.00";
+      return "0";
     }
     if (!value.includes(".")) {
-      return `${value}.00`;
+      return value;
     }
     const parts = value.split(".");
     const integer = parts[0] || "0";

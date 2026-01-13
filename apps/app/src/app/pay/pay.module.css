@@ -1,0 +1,195 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+}
+
+/* Header with light blue gradient */
+.header {
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  padding: 24px 20px 32px;
+  color: white;
+}
+
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.amountDisplay {
+  font-size: 48px;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+/* Main content area */
+.mainContent {
+  flex: 1;
+  background: #1a1a1a;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+/* Chain selector */
+.chainGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.chainButton {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 12px;
+  padding: 16px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  text-align: left;
+}
+
+.chainButton:hover {
+  background: #333333;
+  border-color: #4a4a4a;
+}
+
+.chainButtonActive {
+  background: linear-gradient(135deg, var(--accent), #6fe6d7);
+  border-color: var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.chainButtonActive:hover {
+  background: linear-gradient(135deg, var(--accent), #6fe6d7);
+}
+
+/* Wallet options */
+.walletOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.walletButton {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 12px;
+  padding: 16px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  width: 100%;
+  text-align: left;
+}
+
+.walletButton:hover:not(:disabled) {
+  background: #333333;
+  border-color: #4a4a4a;
+}
+
+.walletButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.walletIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.walletIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Error message */
+.errorMessage {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  color: #f87171;
+  font-size: 14px;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+/* Disconnect button */
+.disconnectButton {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: color 0.2s;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  margin-top: auto;
+}
+
+.disconnectButton:hover {
+  color: #ffffff;
+}
+
+.disconnectButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .amountDisplay {
+    font-size: 40px;
+  }
+
+  .chainGrid {
+    grid-template-columns: 1fr;
+  }
+}
