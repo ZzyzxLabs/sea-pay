@@ -268,6 +268,41 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Animation Modal */
+.animationModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.animationContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.lottieAnimation {
+  width: 200px;
+  height: 200px;
+}
+
+.animationTitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .amountDisplay {
@@ -277,5 +312,14 @@
   
   .mainContent {
     padding: 20px 16px;
+  }
+
+  .lottieAnimation {
+    width: 180px;
+    height: 180px;
+  }
+
+  .animationTitle {
+    font-size: 20px;
   }
 }

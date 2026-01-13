@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import {
   buildTypedData,
@@ -9,6 +8,7 @@ import {
   nowPlusSeconds,
   type TypedData
 } from "@seapay-ai/erc3009";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { chains } from "@/lib/web3/chains";
 import styles from "./pay-mobile.module.css";
 
@@ -89,7 +89,6 @@ const DEFAULT_USDC_RECIPIENT =
 const DEFAULT_USDC_AMOUNT = BigInt("100");
 
 export default function PayMobilePage() {
-  const router = useRouter();
   const { address, isConnected, connector } = useAccount();
   const { connect, connectors, isPending, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
@@ -103,6 +102,7 @@ export default function PayMobilePage() {
   const [signature, setSignature] = useState<string | null>(null);
   const [signatureError, setSignatureError] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+  const [isRelaying, setIsRelaying] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [recipientAddress, setRecipientAddress] = useState<string>(DEFAULT_USDC_RECIPIENT);
@@ -275,6 +275,9 @@ export default function PayMobilePage() {
         return data;
       };
 
+      // Start relaying
+      setIsRelaying(true);
+
       // Send the signed transfer to the relay API
       const relayResponse = await fetch("https://sea-pay.onrender.com/erc3009/relay", {
         method: "POST",
@@ -296,6 +299,7 @@ export default function PayMobilePage() {
       console.log("Relay result:", relayResult);
 
       // Set success state
+      setIsRelaying(false);
       setTransactionSuccess(true);
       if (relayResult.transactionHash || relayResult.hash || relayResult.txHash) {
         setTransactionHash(relayResult.transactionHash || relayResult.hash || relayResult.txHash);
@@ -307,6 +311,7 @@ export default function PayMobilePage() {
       setSignatureError(message);
       setTransactionSuccess(false);
       setTransactionHash(null);
+      setIsRelaying(false);
     } finally {
       setIsSigning(false);
     }
@@ -330,18 +335,6 @@ export default function PayMobilePage() {
     setError(null);
   }, [disconnect]);
 
-  // Redirect to success page when transaction succeeds
-  useEffect(() => {
-    if (transactionSuccess) {
-      const params = new URLSearchParams();
-      if (transactionHash) {
-        params.set("hash", transactionHash);
-      }
-      const queryString = params.toString();
-      const redirectUrl = `/pay-mobile/success${queryString ? `?${queryString}` : ""}`;
-      router.push(redirectUrl);
-    }
-  }, [transactionSuccess, transactionHash, router]);
 
   const statusLabel = isPending
     ? "Connecting"
@@ -470,10 +463,10 @@ export default function PayMobilePage() {
               <button
                 type="button"
                 onClick={signTransfer}
-                disabled={!isConnected || isSigning || isSwitchingChain || !selectedAsset}
+                disabled={!isConnected || isSigning || isSwitchingChain || !selectedAsset || isRelaying}
                 className={`${styles.button} ${styles.buttonPrimary}`}
               >
-                {isSwitchingChain ? "Switching Chain..." : isSigning ? "Processing..." : "Pay"}
+                {isSwitchingChain ? "Switching Chain..." : isSigning || isRelaying ? "Processing..." : "Pay"}
               </button>
             </>
           )}
@@ -520,6 +513,35 @@ export default function PayMobilePage() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading/Success Animation Modal */}
+        {(isRelaying || transactionSuccess) && (
+          <div className={styles.animationModal}>
+            <div className={styles.animationContent}>
+              {isRelaying ? (
+                <>
+                  <DotLottieReact
+                    src="/lottie/Loading.json"
+                    loop
+                    autoplay
+                    className={styles.lottieAnimation}
+                  />
+                  <h3 className={styles.animationTitle}>Processing payment...</h3>
+                </>
+              ) : transactionSuccess ? (
+                <>
+                  <DotLottieReact
+                    src="/lottie/Success.json"
+                    loop={false}
+                    autoplay
+                    className={styles.lottieAnimation}
+                  />
+                  <h3 className={styles.animationTitle}>Payment successful!</h3>
+                </>
+              ) : null}
             </div>
           </div>
         )}
