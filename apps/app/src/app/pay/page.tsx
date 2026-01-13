@@ -89,17 +89,13 @@ function PayPageContent() {
               onClick={() => handleWalletConnect("coinbase")}
             >
               <div className={styles.walletIcon}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect width="24" height="24" rx="12" fill="#0052FF" />
-                  <path
-                    d="M12 7L8 10L12 13L16 10L12 7Z"
-                    fill="white"
-                  />
-                  <path
-                    d="M8 10V14L12 17L16 14V10"
-                    fill="white"
-                  />
-                </svg>
+                <img 
+                  src="/coinbase-wallet-icon.png" 
+                  alt="Coinbase Wallet" 
+                  width={24} 
+                  height={24}
+                  style={{ borderRadius: "50%" }}
+                />
               </div>
               <span>Coinbase Wallet</span>
             </button>
@@ -110,17 +106,13 @@ function PayPageContent() {
               onClick={() => handleWalletConnect("metamask")}
             >
               <div className={styles.walletIcon}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect width="24" height="24" rx="12" fill="#E2761B" />
-                  <path
-                    d="M18.5 6.5L13.5 12L18.5 17.5L21 15L16 12L21 9L18.5 6.5Z"
-                    fill="white"
-                  />
-                  <path
-                    d="M5.5 6.5L10.5 12L5.5 17.5L3 15L8 12L3 9L5.5 6.5Z"
-                    fill="white"
-                  />
-                </svg>
+                <img 
+                  src="/metamask-icon.svg" 
+                  alt="MetaMask" 
+                  width={24} 
+                  height={24}
+                  style={{ borderRadius: "50%" }}
+                />
               </div>
               <span>MetaMask</span>
             </button>
@@ -131,13 +123,13 @@ function PayPageContent() {
               onClick={() => handleWalletConnect("phantom")}
             >
               <div className={styles.walletIcon}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect width="24" height="24" rx="12" fill="#AB9FF2" />
-                  <path
-                    d="M12 6L9 10L12 14L15 10L12 6Z"
-                    fill="white"
-                  />
-                </svg>
+                <img 
+                  src="/phantom-icon.png" 
+                  alt="Phantom" 
+                  width={24} 
+                  height={24}
+                  style={{ borderRadius: "50%" }}
+                />
               </div>
               <span>Phantom</span>
             </button>

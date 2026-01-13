@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { buildDeeplinkUrl } from "@seapay/deeplink";
 import { useStyledQrCode } from "@seapay/deeplink/react";
 import styles from "./receive.module.css";
 
@@ -69,19 +68,19 @@ export default function ReceivePage() {
 
   // Build the payment URL
   const paymentUrl = (() => {
+    if (!showQrCode) return null;
+    
     const defaultAddress = process.env.NEXT_PUBLIC_DEFAULT_RECEIVE_ADDRESS || "";
     const params = new URLSearchParams();
     if (defaultAddress) {
       params.set("address", defaultAddress);
     }
     params.set("amount", displayAmount.replace("$", ""));
-    return `https://app.seapay.ai/pay-mobile?${params.toString()}`;
+    return `https://app.seapay.ai/pay?${params.toString()}`;
   })();
 
-  const deeplinkUrl = showQrCode ? buildDeeplinkUrl(paymentUrl) : null;
-
   // Render QR code
-  useStyledQrCode(deeplinkUrl, qrContainerRef, {
+  useStyledQrCode(paymentUrl, qrContainerRef, {
     width: 280,
     height: 280,
   });
