@@ -51,13 +51,17 @@ function PayPageContent() {
 
   return (
     <div className={styles.container}>
-      {/* Header with light blue gradient */}
+      {/* Header */}
       <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <h1 className={styles.logo}>SeaPay</h1>
-          <div className={styles.amountDisplay}>{formattedAmount} USD</div>
-        </div>
+        <div style={{ width: "24px" }} /> {/* Spacer for centering */}
+        <h1 className={styles.logo}>SeaPay</h1>
+        <div style={{ width: "24px" }} /> {/* Spacer for centering */}
       </header>
+
+      {/* Amount Display */}
+      <div className={styles.amountDisplay}>
+        ${formattedAmount}
+      </div>
 
       {/* Main content area */}
       <div className={styles.mainContent}>
@@ -146,9 +150,9 @@ export default function PayPage() {
     <Suspense fallback={
       <div className={styles.container}>
         <header className={styles.header}>
-          <div className={styles.headerContent}>
-            <h1 className={styles.logo}>SeaPay</h1>
-          </div>
+          <div style={{ width: "24px" }} />
+          <h1 className={styles.logo}>SeaPay</h1>
+          <div style={{ width: "24px" }} />
         </header>
         <div className={styles.mainContent}>
           <div>Loading...</div>

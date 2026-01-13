@@ -2,43 +2,44 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #1a1a1a;
+  background: #0a0a0a;
 }
 
-/* Header with light blue gradient */
+/* Header */
 .header {
-  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-  padding: 24px 20px 32px;
-  color: white;
-}
-
-.headerContent {
+  background: transparent;
+  padding: 16px 20px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
 }
 
 .logo {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   margin: 0;
-  color: white;
+  color: #ffffff;
   font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  text-align: center;
+  flex: 1;
 }
 
 .amountDisplay {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 48px;
-  font-weight: 600;
-  margin: 0;
-  color: white;
+  font-weight: 300;
+  color: #9ca3af;
+  padding: 40px 20px;
   font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
 }
 
 /* Main content area */
 .mainContent {
   flex: 1;
-  background: #1a1a1a;
+  background: #0a0a0a;
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
@@ -67,22 +68,26 @@
 }
 
 .chainButton {
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
+  background: #1f1f1f;
+  border: none;
   border-radius: 12px;
   padding: 16px;
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
   font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
   text-align: left;
 }
 
 .chainButton:hover {
-  background: #333333;
-  border-color: #4a4a4a;
+  background: #2a2a2a;
+}
+
+.chainButton:active {
+  background: #353535;
+  transform: scale(0.98);
 }
 
 .chainButtonActive {
@@ -96,6 +101,10 @@
   background: linear-gradient(135deg, var(--accent), #6fe6d7);
 }
 
+.chainButtonActive:active {
+  transform: scale(0.98);
+}
+
 /* Wallet options */
 .walletOptions {
   display: flex;
@@ -104,15 +113,15 @@
 }
 
 .walletButton {
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
+  background: #1f1f1f;
+  border: none;
   border-radius: 12px;
   padding: 16px;
   color: #ffffff;
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -122,8 +131,12 @@
 }
 
 .walletButton:hover:not(:disabled) {
-  background: #333333;
-  border-color: #4a4a4a;
+  background: #2a2a2a;
+}
+
+.walletButton:active:not(:disabled) {
+  background: #353535;
+  transform: scale(0.98);
 }
 
 .walletButton:disabled {
@@ -186,7 +199,8 @@
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .amountDisplay {
-    font-size: 40px;
+    font-size: 56px;
+    padding: 60px 20px;
   }
 
   .chainGrid {

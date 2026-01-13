@@ -1,0 +1,281 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: transparent;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  text-align: center;
+  flex: 1;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.pulse {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.separator {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.amountDisplay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 300;
+  color: #9ca3af;
+  padding: 40px 20px;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.mainContent {
+  flex: 1;
+  background: #0a0a0a;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.statusBox {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.statusBoxError {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.statusBoxSuccess {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.statusRowStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.statusLabel {
+  font-size: 12px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+.statusMessage {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.statusValue {
+  font-size: 14px;
+  color: #ffffff;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  word-break: break-all;
+}
+
+.statusValueSmall {
+  font-size: 13px;
+  color: #ffffff;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  word-break: break-all;
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+}
+
+.button {
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  width: 100%;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonPrimary {
+  background: linear-gradient(135deg, var(--accent), #6fe6d7);
+  color: var(--ink);
+}
+
+.buttonPrimary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(var(--accent-rgb), 0.25);
+}
+
+.buttonSecondary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modalContent {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.modalSubtitle {
+  font-size: 14px;
+  color: #9ca3af;
+  margin: 0;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.modalButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  text-align: left;
+  width: 100%;
+}
+
+.modalButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.modalButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modalCancelButton {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  width: 100%;
+}
+
+.modalCancelButton:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .amountDisplay {
+    font-size: 40px;
+    padding: 32px 20px;
+  }
+  
+  .mainContent {
+    padding: 20px 16px;
+  }
+}
