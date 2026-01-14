@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId, useSwitchChain, useBytecode} from "wagmi";
 import {
   buildTypedData,
   buildMessage,
@@ -11,6 +11,7 @@ import {
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { chains } from "@/lib/web3/chains";
 import styles from "./pay-mobile.module.css";
+import {type Address} from "viem"
 
 type Asset = {
   symbol: string;
@@ -109,6 +110,13 @@ export default function PayMobilePage() {
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [showWalletModal, setShowWalletModal] = useState(false);
   const lastSwitchedChainIdRef = useRef<number | null>(null);
+
+  // Check if connected wallet is a smart contract
+  const { data: bytecode, isLoading: isLoadingBytecode } = useBytecode({
+    address: isConnected && address ? address : undefined,
+  });
+  
+  const isSmartContractWallet = address && bytecode && bytecode !== '0x' ? true : false;
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -438,6 +446,14 @@ export default function PayMobilePage() {
             <span className={styles.statusLabel}>Asset</span>
             <span className={styles.statusValue}>USDC</span>
           </div>
+          {isConnected && address && (
+            <div className={styles.statusRow} style={{ marginTop: "0.5rem" }}>
+              <span className={styles.statusLabel}>Wallet Type</span>
+              <span className={styles.statusValue}>
+                {isLoadingBytecode ? "Checking..." : isSmartContractWallet ? "Smart Contract" : "EOA"}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
