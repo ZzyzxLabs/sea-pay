@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import {
   buildTypedData,
@@ -9,7 +8,9 @@ import {
   nowPlusSeconds,
   type TypedData
 } from "@seapay-ai/erc3009";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { chains } from "@/lib/web3/chains";
+import styles from "./pay-mobile.module.css";
 
 type Asset = {
   symbol: string;
@@ -88,7 +89,6 @@ const DEFAULT_USDC_RECIPIENT =
 const DEFAULT_USDC_AMOUNT = BigInt("100");
 
 export default function PayMobilePage() {
-  const router = useRouter();
   const { address, isConnected, connector } = useAccount();
   const { connect, connectors, isPending, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
@@ -102,6 +102,7 @@ export default function PayMobilePage() {
   const [signature, setSignature] = useState<string | null>(null);
   const [signatureError, setSignatureError] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+  const [isRelaying, setIsRelaying] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [recipientAddress, setRecipientAddress] = useState<string>(DEFAULT_USDC_RECIPIENT);
@@ -114,7 +115,7 @@ export default function PayMobilePage() {
     const params = new URLSearchParams(window.location.search);
     const addressParam = params.get("address");
     const amountParam = params.get("amount");
-    const assetParam = params.get("asset");
+    const chainParam = params.get("chain");
 
     if (addressParam) {
       setRecipientAddress(addressParam);
@@ -122,21 +123,21 @@ export default function PayMobilePage() {
     if (amountParam) {
       setPaymentAmount(amountParam);
     }
-    if (assetParam) {
-      // Try to find the asset in the current chain's assets
-      const assets = CHAIN_ASSETS[selectedChainId];
-      const foundAsset = assets?.find(a => a.symbol.toUpperCase() === assetParam.toUpperCase());
-      if (foundAsset) {
-        setSelectedAsset(foundAsset);
+    if (chainParam) {
+      const chainId = parseInt(chainParam, 10);
+      if (!isNaN(chainId)) {
+        setSelectedChainId(chainId);
       }
     }
   }, []);
 
-  // Initialize selected asset when chain changes
+  // Initialize selected asset (always USDC) when chain changes
   useEffect(() => {
     const assets = CHAIN_ASSETS[selectedChainId];
     if (assets && assets.length > 0) {
-      setSelectedAsset(assets[0]);
+      // Always use USDC (first asset)
+      const usdcAsset = assets.find(a => a.symbol === "USDC") || assets[0];
+      setSelectedAsset(usdcAsset);
     } else {
       setSelectedAsset(null);
     }
@@ -274,6 +275,9 @@ export default function PayMobilePage() {
         return data;
       };
 
+      // Start relaying
+      setIsRelaying(true);
+
       // Send the signed transfer to the relay API
       const relayResponse = await fetch("https://sea-pay.onrender.com/erc3009/relay", {
         method: "POST",
@@ -295,6 +299,7 @@ export default function PayMobilePage() {
       console.log("Relay result:", relayResult);
 
       // Set success state
+      setIsRelaying(false);
       setTransactionSuccess(true);
       if (relayResult.transactionHash || relayResult.hash || relayResult.txHash) {
         setTransactionHash(relayResult.transactionHash || relayResult.hash || relayResult.txHash);
@@ -306,6 +311,7 @@ export default function PayMobilePage() {
       setSignatureError(message);
       setTransactionSuccess(false);
       setTransactionHash(null);
+      setIsRelaying(false);
     } finally {
       setIsSigning(false);
     }
@@ -329,18 +335,6 @@ export default function PayMobilePage() {
     setError(null);
   }, [disconnect]);
 
-  // Redirect to success page when transaction succeeds
-  useEffect(() => {
-    if (transactionSuccess) {
-      const params = new URLSearchParams();
-      if (transactionHash) {
-        params.set("hash", transactionHash);
-      }
-      const queryString = params.toString();
-      const redirectUrl = `/pay-mobile/success${queryString ? `?${queryString}` : ""}`;
-      router.push(redirectUrl);
-    }
-  }, [transactionSuccess, transactionHash, router]);
 
   const statusLabel = isPending
     ? "Connecting"
@@ -363,153 +357,97 @@ export default function PayMobilePage() {
   const displayError = error || connectError?.message;
 
   return (
-    <main className="app">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">SeaPay</p>
-          <h1>Make a Payment</h1>
-          {!isConnected && (
-            <p className="lede">
-              Connect your wallet to make a payment.
-            </p>
-          )}
-          {/* <Link href="/" className="tx-link hero-link">
-            Back to activity
-          </Link> */}
-        </div>
-        <div
-          className={`hero-badge hero-badge-compact ${statusClass}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span className="pulse" />
+    <div className={styles.container}>
+      {/* Header */}
+      <header className={styles.header}>
+        <div style={{ width: "24px" }} /> {/* Spacer for centering */}
+        <h1 className={styles.logo}>SeaPay</h1>
+        <div className={styles.statusBadge} role="status" aria-live="polite">
+          <span className={styles.pulse} />
           <span>{statusLabel}</span>
           {shortAddress ? (
             <>
-              <span className="hero-badge-sep" aria-hidden="true">
+              <span className={styles.separator} aria-hidden="true">
                 •
               </span>
-              <span className="tx-value hero-badge-account">
-                {shortAddress}
-              </span>
+              <span>{shortAddress}</span>
             </>
           ) : null}
         </div>
       </header>
 
-      <section className="panel">
+      {/* Amount Display */}
+      {paymentAmount && (
+        <div className={styles.amountDisplay}>
+          ${parseFloat(paymentAmount).toFixed(2)}
+        </div>
+      )}
+
+      {/* Main content area */}
+      <div className={styles.mainContent}>
+        {/* Error messages */}
         {displayError ? (
-          <div className="status status-error" role="status" aria-live="polite">
-            <div className="status-row status-row-stack">
-              <span className="status-label">Error</span>
-              <span className="status-message">{displayError}</span>
+          <div className={`${styles.statusBox} ${styles.statusBoxError}`} role="status" aria-live="polite">
+            <div className={styles.statusRowStack}>
+              <span className={styles.statusLabel}>Error</span>
+              <span className={styles.statusMessage}>{displayError}</span>
             </div>
           </div>
         ) : null}
 
         {signatureError ? (
-          <div className="status status-error" role="status" aria-live="polite">
-            <div className="status-row status-row-stack">
-              <span className="status-label">Signature Error</span>
-              <span className="status-message">{signatureError}</span>
+          <div className={`${styles.statusBox} ${styles.statusBoxError}`} role="status" aria-live="polite">
+            <div className={styles.statusRowStack}>
+              <span className={styles.statusLabel}>Signature Error</span>
+              <span className={styles.statusMessage}>{signatureError}</span>
             </div>
           </div>
         ) : null}
 
         {transactionSuccess ? (
-          <div className="status status-success" role="status" aria-live="polite">
-            <div className="status-row status-row-stack">
-              <span className="status-label">Transaction Successful</span>
-              <span className="status-message">
+          <div className={`${styles.statusBox} ${styles.statusBoxSuccess}`} role="status" aria-live="polite">
+            <div className={styles.statusRowStack}>
+              <span className={styles.statusLabel}>Transaction Successful</span>
+              <span className={styles.statusMessage}>
                 Your payment is complete!
               </span>
             </div>
-            {/* {transactionHash && (
-              <div className="status-row status-row-stack">
-                <span className="status-label">Transaction Hash</span>
-                <span className="tx-value">{transactionHash}</span>
-              </div>
-            )} */}
           </div>
         ) : signature ? (
-          <div className="status status-success" role="status" aria-live="polite">
-            <div className="status-row status-row-stack">
-              <span className="status-label">Signature</span>
-              <span className="tx-value">{signature}</span>
+          <div className={`${styles.statusBox} ${styles.statusBoxSuccess}`} role="status" aria-live="polite">
+            <div className={styles.statusRowStack}>
+              <span className={styles.statusLabel}>Signature</span>
+              <span className={styles.statusValue}>{signature}</span>
             </div>
           </div>
         ) : null}
 
-        <div className="status" style={{ marginTop: "1rem" }}>
-          <div className="status-row">
-            <span className="status-label">Recipient Address</span>
-            <span className="tx-small">{recipientAddress}</span>
+        {/* Payment details */}
+        <div className={styles.statusBox}>
+          <div className={styles.statusRow}>
+            <span className={styles.statusLabel}>Recipient Address</span>
+            <span className={styles.statusValueSmall}>{recipientAddress}</span>
           </div>
-          {paymentAmount && (
-            <div className="status-row">
-              <span className="status-label">Amount</span>
-              <span className="tx-value">
-                {paymentAmount} {selectedAsset?.symbol || ""}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="status" style={{ marginTop: "1rem" }}>
-          <div className="status-row">
-            <span className="status-label">Select Chain</span>
-            <select
-              value={selectedChainId}
-              onChange={(e) => setSelectedChainId(Number(e.target.value))}
-              style={{
-                padding: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                backgroundColor: "white",
-                fontSize: "0.9rem",
-              }}
-            >
-              {chains.map((chain) => (
-                <option key={chain.id} value={chain.id}>
-                  {chain.name}
-                </option>
-              ))}
-            </select>
+          <div className={styles.statusRow} style={{ marginTop: "0.5rem" }}>
+            <span className={styles.statusLabel}>Chain</span>
+            <span className={styles.statusValue}>
+              {chains.find((c) => c.id === selectedChainId)?.name || `Chain ${selectedChainId}`}
+            </span>
           </div>
-          <div className="status-row" style={{ marginTop: "0.5rem" }}>
-            <span className="status-label">Select Asset</span>
-            <select
-              value={selectedAsset?.address || ""}
-              onChange={(e) => {
-                const asset = CHAIN_ASSETS[selectedChainId]?.find(
-                  (a) => a.address === e.target.value
-                );
-                setSelectedAsset(asset || null);
-              }}
-              disabled={!CHAIN_ASSETS[selectedChainId]?.length}
-              style={{
-                padding: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                backgroundColor: "white",
-                fontSize: "0.9rem",
-              }}
-            >
-              {CHAIN_ASSETS[selectedChainId]?.map((asset) => (
-                <option key={asset.address} value={asset.address}>
-                  {asset.name} ({asset.symbol})
-                </option>
-              )) || <option value="">No assets available</option>}
-            </select>
+          <div className={styles.statusRow} style={{ marginTop: "0.5rem" }}>
+            <span className={styles.statusLabel}>Asset</span>
+            <span className={styles.statusValue}>USDC</span>
           </div>
         </div>
 
-        <div className="actions">
+        {/* Actions */}
+        <div className={styles.actions}>
           {!isConnected ? (
             <button
               type="button"
               onClick={() => setShowWalletModal(true)}
               disabled={isPending}
+              className={`${styles.button} ${styles.buttonPrimary}`}
             >
               Connect Wallet
             </button>
@@ -518,57 +456,38 @@ export default function PayMobilePage() {
               <button
                 type="button"
                 onClick={disconnectWallet}
-                className="secondary"
+                className={`${styles.button} ${styles.buttonSecondary}`}
               >
                 Disconnect
               </button>
               <button
                 type="button"
                 onClick={signTransfer}
-                disabled={!isConnected || isSigning || isSwitchingChain || !selectedAsset}
-                className="pay-button"
+                disabled={!isConnected || isSigning || isSwitchingChain || !selectedAsset || isRelaying}
+                className={`${styles.button} ${styles.buttonPrimary}`}
               >
-                {isSwitchingChain ? "Switching Chain..." : isSigning ? "Processing..." : "Pay"}
+                {isSwitchingChain ? "Switching Chain..." : isSigning || isRelaying ? "Processing..." : "Pay"}
               </button>
             </>
           )}
         </div>
+      </div>
 
         {/* Wallet Selection Modal */}
         {showWalletModal && (
           <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
+            className={styles.modalBackdrop}
             onClick={() => setShowWalletModal(false)}
           >
             <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "8px",
-                padding: "1.5rem",
-                maxWidth: "400px",
-                width: "90%",
-                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              }}
+              className={styles.modalContent}
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 style={{ margin: "0 0 1rem 0", fontSize: "1.25rem" }}>
-                Connect Wallet
-              </h2>
-              <p style={{ margin: "0 0 1.5rem 0", color: "#666", fontSize: "0.9rem" }}>
+              <h2 className={styles.modalTitle}>Connect Wallet</h2>
+              <p className={styles.modalSubtitle}>
                 Choose a wallet to connect
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div className={styles.modalButtons}>
                 {connectors.length > 0 ? (
                   connectors.map((connector) => (
                     <button
@@ -576,30 +495,13 @@ export default function PayMobilePage() {
                       type="button"
                       onClick={() => handleConnectWallet(connector.uid)}
                       disabled={isPending}
-                      style={{
-                        padding: "0.75rem 1rem",
-                        borderRadius: "6px",
-                        border: "1px solid #e0e0e0",
-                        backgroundColor: "white",
-                        cursor: isPending ? "not-allowed" : "pointer",
-                        fontSize: "1rem",
-                        textAlign: "left",
-                        transition: "background-color 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isPending) {
-                          e.currentTarget.style.backgroundColor = "#f5f5f5";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "white";
-                      }}
+                      className={styles.modalButton}
                     >
                       {connector.name}
                     </button>
                   ))
                 ) : (
-                  <p style={{ color: "#666", fontSize: "0.9rem", textAlign: "center", padding: "1rem" }}>
+                  <p style={{ color: "#9ca3af", fontSize: "14px", textAlign: "center", padding: "16px" }}>
                     No wallet connectors available
                   </p>
                 )}
@@ -607,15 +509,7 @@ export default function PayMobilePage() {
               <button
                 type="button"
                 onClick={() => setShowWalletModal(false)}
-                style={{
-                  marginTop: "1rem",
-                  padding: "0.5rem 1rem",
-                  borderRadius: "6px",
-                  border: "1px solid #e0e0e0",
-                  backgroundColor: "white",
-                  cursor: "pointer",
-                  width: "100%",
-                }}
+                className={styles.modalCancelButton}
               >
                 Cancel
               </button>
@@ -623,10 +517,34 @@ export default function PayMobilePage() {
           </div>
         )}
 
-        {/* <p className="form-help">
-          On mobile, Coinbase Wallet will open to complete the connection.
-        </p> */}
-      </section>
-    </main>
+        {/* Loading/Success Animation Modal */}
+        {(isRelaying || transactionSuccess) && (
+          <div className={styles.animationModal}>
+            <div className={styles.animationContent}>
+              {isRelaying ? (
+                <>
+                  <DotLottieReact
+                    src="/lottie/Loading.json"
+                    loop
+                    autoplay
+                    className={styles.lottieAnimation}
+                  />
+                  <h3 className={styles.animationTitle}>Processing payment...</h3>
+                </>
+              ) : transactionSuccess ? (
+                <>
+                  <DotLottieReact
+                    src="/lottie/Success.json"
+                    loop={false}
+                    autoplay
+                    className={styles.lottieAnimation}
+                  />
+                  <h3 className={styles.animationTitle}>Payment successful!</h3>
+                </>
+              ) : null}
+            </div>
+          </div>
+        )}
+    </div>
   );
 }

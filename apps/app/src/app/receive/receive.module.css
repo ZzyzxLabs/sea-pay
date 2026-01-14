@@ -1,0 +1,297 @@
+.container {
+  min-height: 100vh;
+  background: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: transparent;
+}
+
+.backButton {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.backButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.backButton:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.amountDisplay {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 300;
+  color: #9ca3af;
+  padding: 40px 20px;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.keypad {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  padding-bottom: 100px;
+}
+
+.keypadRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.keypadKey {
+  background: #1f1f1f;
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 400;
+  padding: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, transform 0.1s;
+  min-height: 60px;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.keypadKey:hover {
+  background: #2a2a2a;
+}
+
+.keypadKey:active {
+  background: #353535;
+  transform: scale(0.98);
+}
+
+.keypadKey svg {
+  width: 20px;
+  height: 20px;
+}
+
+.continueButton {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  background: linear-gradient(135deg, var(--accent), #6fe6d7);
+  border: none;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 10;
+  border-radius: 16px;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.continueButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(var(--accent-rgb), 0.25);
+}
+
+.continueButton:active {
+  transform: translateY(0);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .amountDisplay {
+    font-size: 56px;
+    padding: 60px 20px;
+  }
+
+  .keypad {
+    padding-bottom: 90px;
+  }
+
+  .keypadKey {
+    min-height: 70px;
+    font-size: 28px;
+  }
+}
+
+/* Prevent zoom on input focus on iOS */
+@media screen and (max-width: 768px) {
+  .keypadKey {
+    font-size: 16px;
+  }
+}
+
+/* QR Code Screen Styles */
+.qrContainer {
+  min-height: 100vh;
+  background: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+}
+
+.qrHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: transparent;
+}
+
+.qrBackButton {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.qrBackButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.qrBackButton:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.qrTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.qrContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 24px;
+}
+
+.qrSubtitle {
+  font-size: 16px;
+  font-weight: 400;
+  color: #9ca3af;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.qrAmount {
+  font-size: 48px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.qrCodeContainer {
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.qrCodeContainer > canvas,
+.qrCodeContainer > svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.qrCloseButton {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, transform 0.1s;
+  z-index: 10;
+}
+
+.qrCloseButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.qrCloseButton:active {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(-50%) scale(0.95);
+}
+
+.qrCloseButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Mobile optimizations for QR screen */
+@media (max-width: 768px) {
+  .qrAmount {
+    font-size: 56px;
+  }
+
+  .qrCodeContainer {
+    width: 300px;
+    height: 300px;
+  }
+
+  .qrCloseButton {
+    bottom: 24px;
+  }
+}

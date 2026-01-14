@@ -1,441 +1,310 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useFilteredWebSocket } from "@/hooks/useFilteredWebSocket";
-import Link from "next/link";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { buildDeeplinkUrl } from "@seapay/deeplink";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useStyledQrCode } from "@seapay/deeplink/react";
+import styles from "./receive.module.css";
 
 export default function ReceivePage() {
-  const [walletAddress, setWalletAddress] = useState("");
-  const [amount, setAmount] = useState("");
-  const [assetType, setAssetType] = useState("ETH");
-  const [isMonitoring, setIsMonitoring] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [matchPhase, setMatchPhase] = useState<"idle" | "loading" | "success">(
-    "idle"
-  );
-  const [lastSender, setLastSender] = useState<string | null>(null);
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [deeplinkUrl, setDeeplinkUrl] = useState<string | null>(null);
+  const router = useRouter();
+  const [rawAmount, setRawAmount] = useState("0");
+  const [showQrCode, setShowQrCode] = useState(false);
   const qrContainerRef = useRef<HTMLDivElement>(null);
-  const [filterConfig, setFilterConfig] = useState<{
-    address: string;
-    amount: number;
-    asset: string;
-  } | null>(null);
 
-  const paymentLink = (() => {
-    if (!filterConfig) {
-      return "/pay-mobile";
+  const formatDisplay = (value: string): string => {
+    if (value === "0" || value === "") {
+      return "0";
     }
+    if (!value.includes(".")) {
+      return value;
+    }
+    const parts = value.split(".");
+    const integer = parts[0] || "0";
+    const decimal = (parts[1] || "").padEnd(2, "0").slice(0, 2);
+    return `${integer}.${decimal}`;
+  };
+
+  const displayAmount = formatDisplay(rawAmount);
+  const hasAmount = rawAmount !== "0" && parseFloat(displayAmount) > 0;
+
+  const handleNumberPress = (num: string) => {
+    if (rawAmount === "0") {
+      setRawAmount(num);
+    } else {
+      const parts = rawAmount.split(".");
+      if (parts.length === 1 || !parts[1]) {
+        // No decimal or empty decimal part
+        setRawAmount(rawAmount + num);
+      } else if (parts[1].length < 2) {
+        // Add to decimal part (max 2 digits)
+        setRawAmount(rawAmount + num);
+      }
+    }
+  };
+
+  const handleDecimalPress = () => {
+    if (!rawAmount.includes(".")) {
+      setRawAmount(rawAmount + ".");
+    }
+  };
+
+  const handleBackspace = () => {
+    if (rawAmount.length <= 1) {
+      setRawAmount("0");
+    } else {
+      setRawAmount(rawAmount.slice(0, -1));
+    }
+  };
+
+  const handleContinue = () => {
+    if (hasAmount) {
+      setShowQrCode(true);
+    }
+  };
+
+  const handleCloseQrCode = () => {
+    setShowQrCode(false);
+  };
+
+  // Build the payment URL
+  const paymentUrl = (() => {
+    if (!showQrCode) return null;
+    
+    const defaultAddress = process.env.NEXT_PUBLIC_DEFAULT_RECEIVE_ADDRESS || "";
     const params = new URLSearchParams();
-    if (filterConfig.address) {
-      params.set("address", filterConfig.address);
+    if (defaultAddress) {
+      params.set("address", defaultAddress);
     }
-    if (amount) {
-      params.set("amount", amount);
-    } else if (Number.isFinite(filterConfig.amount)) {
-      params.set("amount", String(filterConfig.amount));
-    }
-    if (filterConfig.asset) {
-      params.set("asset", filterConfig.asset);
-    } else if (assetType) {
-      params.set("asset", assetType);
-    }
-    if (lastSender) {
-      params.set("sender", lastSender);
-    }
-    const query = params.toString();
-    return query ? `/pay-mobile?${query}` : "/pay-mobile";
+    params.set("amount", displayAmount.replace("$", ""));
+    return `https://app.seapay.ai/pay?${params.toString()}`;
   })();
 
-  const { status, activities } = useFilteredWebSocket(filterConfig);
-
-  // Render styled QR code
-  useStyledQrCode(deeplinkUrl, qrContainerRef, {
-    width: 200,
-    height: 200,
+  // Render QR code
+  useStyledQrCode(paymentUrl, qrContainerRef, {
+    width: 280,
+    height: 280,
   });
 
-  const handleStartMonitoring = async (e: React.FormEvent) => {
-    e.preventDefault();
+  if (showQrCode) {
+    return (
+      <div className={styles.qrContainer}>
+        {/* Header */}
+        <header className={styles.qrHeader}>
+          <button
+            className={styles.qrBackButton}
+            onClick={handleCloseQrCode}
+            aria-label="Close"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M15 18L9 12L15 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <h1 className={styles.qrTitle}>SeaPay</h1>
+          <div style={{ width: "24px" }} />
+        </header>
 
-    if (!walletAddress.trim() || !amount.trim() || !assetType.trim()) {
-      setError("Please enter wallet address, amount, and asset type");
-      return;
-    }
+        {/* QR Code Content */}
+        <div className={styles.qrContent}>
+          <p className={styles.qrSubtitle}>Scan to pay</p>
+          <div className={styles.qrAmount}>${displayAmount}</div>
+          <div
+            ref={qrContainerRef}
+            className={styles.qrCodeContainer}
+          />
+        </div>
 
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError("Please enter a valid amount");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Add wallet address to Alchemy webhook
-      const response = await fetch("/api/webhook-addresses", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          addressesToAdd: [walletAddress.trim()],
-          addressesToRemove: [],
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to add address to webhook");
-      }
-
-      console.log("Address added to webhook:", data);
-
-      // Start monitoring
-      const config = {
-        address: walletAddress.trim().toLowerCase(),
-        amount: parsedAmount,
-        asset: assetType || "USDC",
-      };
-      setFilterConfig(config);
-
-      // Generate deeplink URL for QR code
-      const params = new URLSearchParams();
-      params.set("address", config.address);
-      params.set("amount", String(config.amount));
-      params.set("asset", config.asset);
-      const fullUrl = `${window.location.origin}/pay-mobile?${params.toString()}`;
-      const deeplinkurl = buildDeeplinkUrl(fullUrl);
-      console.log("Generated deeplink URL:", deeplinkurl);
-      setDeeplinkUrl(deeplinkurl);
-
-      setIsMonitoring(true);
-      setMatchPhase("loading");
-      setLastSender(null);
-      setIsPopupOpen(true);
-    } catch (err) {
-      console.error("Error adding address to webhook:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to start monitoring"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStopMonitoring = async () => {
-    if (!filterConfig) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Remove wallet address from Alchemy webhook
-      const response = await fetch("/api/webhook-addresses", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          addressesToAdd: [],
-          addressesToRemove: [filterConfig.address],
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to remove address from webhook");
-      }
-
-      console.log("Address removed from webhook:", data);
-
-      // Stop monitoring
-      setFilterConfig(null);
-      setIsMonitoring(false);
-      setMatchPhase("idle");
-      setIsPopupOpen(false);
-      setDeeplinkUrl(null);
-    } catch (err) {
-      console.error("Error removing address from webhook:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to stop monitoring"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getStatusText = () => {
-    switch (status) {
-      case "connected":
-        return "Connected";
-      case "disconnected":
-        return "Disconnected";
-      case "error":
-        return "Connection Error";
-    }
-  };
-
-  const hasMatch = matchPhase === "success";
-
-  const resultsHint = isMonitoring
-    ? hasMatch
-      ? "Match received"
-      : "Waiting for matching transactions"
-    : 'Fill in the form above and click "Start Monitoring" to begin';
-
-  useEffect(() => {
-    if (activities.length > 0) {
-      setMatchPhase("success");
-      setLastSender(activities[0].fromAddress);
-    }
-  }, [activities]);
-
-  useEffect(() => {
-    if (!isMonitoring) {
-      setMatchPhase("idle");
-      setLastSender(null);
-      setIsPopupOpen(false);
-    }
-  }, [isMonitoring]);
+        {/* Close Button */}
+        <button
+          className={styles.qrCloseButton}
+          onClick={handleCloseQrCode}
+          aria-label="Close"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M18 6L6 18M6 6L18 18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <main className="app">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">SeaPay</p>
-          <h1>Receive Payments</h1>
-          {/* <Link href="/" className="tx-link hero-link">
-            View all activity
-          </Link> */}
-        </div>
-        {/* <div className="hero-badge">
-          <span className="pulse" />
-          <span>{getStatusText()}</span>
-        </div> */}
+    <div className={styles.container}>
+      {/* Header */}
+      <header className={styles.header}>
+        <button
+          className={styles.backButton}
+          onClick={() => router.back()}
+          aria-label="Go back"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M15 18L9 12L15 6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <h1 className={styles.title}>SeaPay</h1>
+        <div style={{ width: "24px" }} /> {/* Spacer for centering */}
       </header>
 
-      <section className="panel">
-        {/* <div className="status" role="status" aria-live="polite">
-          <div className="status-row">
-            <span className="status-label">Status</span>
-            <span>{getStatusText()}</span>
-          </div>
-          <div className="status-row">
-            <span className="status-label">Monitoring</span>
-            <span>{isMonitoring ? "Active" : "Inactive"}</span>
-          </div>
-          <div className="status-row">
-            <span className="status-label">Matches</span>
-            <span>{activities.length}</span>
-          </div>
-        </div> */}
+      {/* Amount Display */}
+      <div className={styles.amountDisplay}>
+        ${displayAmount}
+      </div>
 
-        <form onSubmit={handleStartMonitoring} className="form-grid">
-          <div className="form-item">
-            <label htmlFor="walletAddress" className="form-label">
-              Wallet Address
-            </label>
-            <input
-              type="text"
-              id="walletAddress"
-              value={walletAddress}
-              onChange={(e) => setWalletAddress(e.target.value)}
-              placeholder="0x..."
-              disabled={isMonitoring}
-              className="form-input"
-            />
-            <p className="form-help">
-              Enter your wallet address to receive payments
-            </p>
-          </div>
-
-          <div className="form-item">
-            <label htmlFor="amount" className="form-label">
-              Transaction Amount
-            </label>
-            <input
-              type="number"
-              id="amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.001"
-              step="0.000001"
-              disabled={isMonitoring}
-              className="form-input"
-            />
-            <p className="form-help">
-              Only show transactions with this exact amount
-            </p>
-          </div>
-
-          <div className="form-item">
-            <label htmlFor="assetType" className="form-label">
-              Asset Type
-            </label>
-            <select
-              id="assetType"
-              value={assetType}
-              onChange={(e) => setAssetType(e.target.value)}
-              disabled={isMonitoring}
-              className="form-input"
+      {/* Number Pad */}
+      <div className={styles.keypad}>
+        <div className={styles.keypadRow}>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("1")}
+          >
+            1
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("2")}
+          >
+            2
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("3")}
+          >
+            3
+          </button>
+        </div>
+        <div className={styles.keypadRow}>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("4")}
+          >
+            4
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("5")}
+          >
+            5
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("6")}
+          >
+            6
+          </button>
+        </div>
+        <div className={styles.keypadRow}>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("7")}
+          >
+            7
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("8")}
+          >
+            8
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("9")}
+          >
+            9
+          </button>
+        </div>
+        <div className={styles.keypadRow}>
+          <button
+            className={styles.keypadKey}
+            onClick={handleDecimalPress}
+          >
+            .
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={() => handleNumberPress("0")}
+          >
+            0
+          </button>
+          <button
+            className={styles.keypadKey}
+            onClick={handleBackspace}
+            aria-label="Backspace"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <option value="ETH">ETH</option>
-              <option value="USDC">USDC</option>
-              <option value="USDT">USDT</option>
-            </select>
-            <p className="form-help">Choose the asset to monitor</p>
-          </div>
-
-          <div className="actions">
-            {!isMonitoring ? (
-              <button type="submit" disabled={isLoading} id="startBtn">
-                {isLoading ? "Generating..." : "Generate QR Code"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleStopMonitoring}
-                disabled={isLoading}
-                className="secondary"
-              >
-                {isLoading ? "Canceling..." : "Cancel"}
-              </button>
-            )}
-          </div>
-        </form>
-
-        {error && (
-          <div className="status status-error" role="status" aria-live="polite">
-            <div className="status-row status-row-stack">
-              <span className="status-label">Error</span>
-              <span className="status-message">{error}</span>
-            </div>
-          </div>
-        )}
-
-        {/* {isMonitoring && filterConfig && (
-          <div className="status status-success" role="status" aria-live="polite">
-            <div className="status-row status-row-stack">
-              <span className="status-label">Monitoring</span>
-              <span className="status-message">
-                Address {filterConfig.address} for transactions of exactly{" "}
-                {filterConfig.amount} {assetType}
-              </span>
-            </div>
-          </div>
-        )} */}
-      </section>
-
-      {/* <section className="results">
-        <div className="results-header">
-          <h2>Matches</h2>
-          <p className="muted">{resultsHint}</p>
+              <path
+                d="M21 4H8L1 12L8 20H21C21.5304 20 22.0391 19.7893 22.4142 19.4142C22.7893 19.0391 23 18.5304 23 18V6C23 5.46957 22.7893 4.96086 22.4142 4.58579C22.0391 4.21071 21.5304 4 21 4V4Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M18 9L12 15"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M12 9L18 15"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
-        <div className="results-list">
-          {isMonitoring ? (
-            <div className="tx-card empty-state">
-              <h3>{hasMatch ? "Match received" : "Monitoring..."}</h3>
-              <p className="muted">
-                {hasMatch
-                  ? "Check the popup for details."
-                  : "Waiting for matching transactions"}
-              </p>
-              {filterConfig && !hasMatch && (
-                <>
-                  <p className="muted small">Address: {filterConfig.address}</p>
-                  <p className="muted small">Amount: {filterConfig.amount}</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="tx-card empty-state">
-              <h3>Not Monitoring</h3>
-              <p className="muted">
-                Fill in the form above and click "Start Monitoring" to begin
-              </p>
-            </div>
-          )}
-        </div>
-      </section> */}
+      </div>
 
-      {isMonitoring && isPopupOpen && (
-        <div className="modal-backdrop" role="status" aria-live="polite">
-          <div className="modal-card">
-            <button
-              type="button"
-              className="modal-close"
-              onClick={handleStopMonitoring}
-              disabled={isLoading}
-              aria-label="Close popup"
-            >
-              x
-            </button>
-            <div className="modal-body">
-              {hasMatch ? (
-                <DotLottieReact
-                  key="success"
-                  src="/lottie/Success.json"
-                  autoplay
-                  loop={false}
-                  className="modal-lottie"
-                />
-              ) : deeplinkUrl ? (
-                <div
-                  ref={qrContainerRef}
-                  style={{
-                    width: "200px",
-                    height: "200px",
-                    margin: "0 auto",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                />
-              ) : (
-                <DotLottieReact
-                  key="loading"
-                  src="/lottie/Loading.json"
-                  autoplay
-                  loop={true}
-                  className="modal-lottie"
-                />
-              )}
-
-              <h3 className="modal-title">
-                {hasMatch ? "Payment received" : "Scan to Pay"}
-              </h3>
-              {filterConfig && (
-                <div className="modal-wallet">
-                  {/* <span className="tx-label">To</span>
-                  <span className="">{filterConfig.address}</span> */}
-                  <span className="tx-label">Amount</span>
-                  <span className="tx-value">
-                    {amount || filterConfig.amount} {assetType}
-                  </span>
-                  {lastSender && (
-                    <>
-                      <span className="tx-label">From</span>
-                      <span className="tx-value">{lastSender}</span>
-                    </>
-                  )}
-                </div>
-              )}
-              <Link href={paymentLink} className="tx-link">
-                Open payment page
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+      {/* Continue Button */}
+      <button
+        className={styles.continueButton}
+        onClick={handleContinue}
+      >
+        {hasAmount ? "Charge" : "Enter amount"}
+      </button>
+    </div>
   );
 }
