@@ -40,6 +40,25 @@ See `env.example` for a complete template with all options.
 
 **Security Note**: Never commit your `.env` file. It contains sensitive private keys.
 
+### 3. Solana (devnet/localnet) Config
+
+Add the following for Solana relaying:
+
+- `SOLANA_RPC_URL` (default devnet)
+- `SOLANA_WS_URL` (optional, defaults to RPC with ws scheme)
+- `SOLANA_FEE_PAYER_SECRET` base58 secret (optional, used to co-sign/pay fees)
+- `KORA_RPC_URL` + `KORA_SIGNER_ADDRESS` (optional, enable `useKora=true` path)
+- `SOLANA_RELAY_URL` (defaults to `http://localhost:3001/solana/relay`)
+
+For devnet testing, set:
+
+```bash
+SOLANA_RPC_URL=https://api.devnet.solana.com
+SOLANA_TEST_SENDER_SECRET=<base58 devnet key>   # or leave blank to auto-generate + airdrop
+SOLANA_TEST_RECIPIENT=<recipient pubkey>        # optional
+SOLANA_TEST_LAMPORTS=10000000                   # 0.01 SOL
+```
+
 ## Running the Service
 
 ### Development Mode
@@ -146,6 +165,67 @@ Response:
 }
 ```
 
+### 4. Solana Relay - Fee Payer
+
+**POST `/solana/relay`**
+
+Relays a Solana transaction using the backend fee payer. The relayer co-signs the transaction and pays SOL fees on behalf of the user.
+
+**Requires**: `SOLANA_FEE_PAYER_SECRET` environment variable
+
+Request body:
+
+```json
+{
+  "transaction": "<base64 tx>",
+  "waitForConfirmation": true,
+  "skipPreflight": false,
+  "rpcUrl": "https://api.devnet.solana.com"
+}
+```
+
+Response:
+
+```json
+{
+  "signature": "5p7...abc",
+  "cluster": "https://api.devnet.solana.com",
+  "mode": "fee-payer-sign",
+  "confirmed": true
+}
+```
+
+### 5. Solana Relay - Kora (Gasless)
+
+**POST `/solana/kora`**
+
+Relays a Solana transaction using Kora for gasless fee payment. Kora allows users to pay fees with SPL tokens instead of SOL.
+
+**Requires**: `KORA_RPC_URL` and `KORA_SIGNER_ADDRESS` environment variables (or `koraSigner` in request)
+
+Request body:
+
+```json
+{
+  "transaction": "<base64 tx>",
+  "koraSigner": "3Z1Ef7YaxK8oUMoi6exf7wYZjZKWJJsrzJXSt1c3qrDE", // Optional if KORA_SIGNER_ADDRESS is set
+  "waitForConfirmation": true,
+  "skipPreflight": false,
+  "rpcUrl": "https://api.devnet.solana.com"
+}
+```
+
+Response:
+
+```json
+{
+  "signature": "5p7...abc",
+  "cluster": "https://api.devnet.solana.com",
+  "mode": "kora-sign",
+  "confirmed": true
+}
+```
+
 ## Testing the Service
 
 ### Automated Test Script
@@ -175,6 +255,45 @@ The test will:
 3. ✅ Verify signature locally
 4. ✅ Relay the transaction
 5. ✅ Output the transaction hash
+
+### Solana Devnet Test
+
+```bash
+# From services/relayer
+pnpm test:solana:devnet
+```
+
+**Using Fee Payer (default)**:
+
+```bash
+SOLANA_TEST_SENDER_SECRET=...
+SOLANA_TEST_RECIPIENT=...
+SOLANA_SPL_MINT=...
+SOLANA_SPL_AMOUNT=...
+SOLANA_RELAY_URL=http://localhost:3001/solana/relay
+pnpm test:solana:devnet
+```
+
+**Using Kora (gasless)**:
+
+```bash
+SOLANA_TEST_SENDER_SECRET=...
+SOLANA_TEST_RECIPIENT=...
+SOLANA_SPL_MINT=...
+SOLANA_SPL_AMOUNT=...
+SOLANA_USE_KORA=true
+SOLANA_KORA_URL=http://localhost:3001/solana/kora
+KORA_SIGNER_ADDRESS=...  # Optional if set in server env
+pnpm test:solana:devnet
+```
+
+Environment variables:
+
+- `SOLANA_RPC_URL` (defaults to devnet)
+- `SOLANA_TEST_SENDER_SECRET` (base58; optional, otherwise auto-generate + airdrop)
+- `SOLANA_TEST_RECIPIENT` (optional)
+- `SOLANA_TEST_LAMPORTS` (optional, default 0.01 SOL)
+- `SOLANA_RELAY_URL` (defaults to http://localhost:3001/solana/relay)
 
 ### Manual Testing with curl
 
@@ -350,10 +469,127 @@ Common causes:
 
 Check the transaction on a block explorer for the exact revert reason.
 
+## Solana & Kora Integration
+
+### Do You Need a Kora Server?
+
+**Short answer**: It depends on your use case.
+
+#### Option 1: Regular SPL Token Transfers (No Kora Required)
+
+For standard SPL token transfers where users pay SOL fees themselves:
+
+- ✅ **No Kora server needed**
+- User signs transaction with their wallet
+- User pays SOL fees from their wallet
+- Relayer just forwards the transaction (`mode: "forward"`)
+
+**Configuration**: Only need `SOLANA_RPC_URL` (defaults to devnet).
+
+#### Option 2: Relayer Pays Fees (No Kora Required)
+
+If you want the relayer to pay SOL fees on behalf of users:
+
+- ✅ **No Kora server needed**
+- User signs transaction
+- Relayer co-signs and pays SOL fees
+- Requires `SOLANA_FEE_PAYER_SECRET` in env
+
+**Configuration**:
+
+- `SOLANA_RPC_URL`
+- `SOLANA_FEE_PAYER_SECRET` (base58 encoded keypair)
+
+#### Option 3: Gasless Transactions with SPL Tokens (Kora Required)
+
+For gasless transactions where users pay fees with SPL tokens instead of SOL:
+
+- ✅ **Kora server required**
+- User signs transaction
+- Kora server validates and co-signs
+- User pays fees with SPL tokens (e.g., USDC)
+- Requires running Kora RPC server
+
+**Configuration**:
+
+- `KORA_RPC_URL` - Your Kora RPC server endpoint
+- `KORA_SIGNER_ADDRESS` - Signer address configured in Kora
+- Set `useKora: true` in request body
+
+### Setting Up Kora Server
+
+To enable gasless SPL token transfers, you need to run a Kora RPC server. Follow the [Kora Quick Start Guide](https://launch.solana.com/docs/kora/getting-started/quick-start):
+
+1. **Install Kora CLI**:
+
+   ```bash
+   cargo install kora-cli
+   ```
+
+2. **Configure Kora** (`kora.toml`):
+
+   - Set `allowed_spl_paid_tokens` to your token mint addresses
+   - Configure `max_allowed_lamports` for fee limits
+   - Set `allowed_programs` (e.g., Token Program)
+
+3. **Configure Signers** (`signers.toml`):
+
+   - Define signer keypairs for fee payment
+
+4. **Start Kora RPC Server**:
+
+   ```bash
+   kora rpc start --signers-config signers.toml
+   ```
+
+5. **Update Relayer Config**:
+   ```bash
+   KORA_RPC_URL=http://localhost:8899  # Your Kora server URL
+   KORA_SIGNER_ADDRESS=YourSignerPubkey
+   ```
+
+### Testing SPL Token Transfers
+
+The test script (`test-solana-devnet.mjs`) supports both fee payer and Kora modes:
+
+**Fee Payer Mode (default)**:
+
+```bash
+SOLANA_TEST_SENDER_SECRET=<base58_secret>
+SOLANA_TEST_RECIPIENT=<recipient_pubkey>
+SOLANA_SPL_MINT=<token_mint_address>
+SOLANA_SPL_AMOUNT=<amount_in_smallest_unit>
+SOLANA_RELAY_URL=http://localhost:3001/solana/relay
+
+./test-relay.sh solana devnet
+```
+
+**Kora Mode**:
+
+```bash
+SOLANA_TEST_SENDER_SECRET=<base58_secret>
+SOLANA_TEST_RECIPIENT=<recipient_pubkey>
+SOLANA_SPL_MINT=<token_mint_address>
+SOLANA_SPL_AMOUNT=<amount_in_smallest_unit>
+SOLANA_USE_KORA=true
+SOLANA_KORA_URL=http://localhost:3001/solana/kora
+KORA_SIGNER_ADDRESS=<kora_signer_pubkey>  # Optional if set in server env
+
+./test-relay.sh solana devnet
+```
+
+### Kora Client vs Server
+
+- **Kora Client** (`@solana/kora`): JavaScript SDK for interacting with Kora RPC
+- **Kora Server** (`kora-cli`): Rust-based RPC server that validates and signs transactions
+
+The relayer uses the **Kora Client** to communicate with your **Kora Server**. You must run a Kora server separately - it's not included in this relayer service.
+
 ## Related Packages
 
 - [`@seapay-ai/erc3009`](../../packages/erc3009) - ERC-3009 helper library
 - [`@seapay/deeplink`](../../packages/deeplink) - DeepLink generator for mobile wallets
+- [`@solana/kora`](https://www.npmjs.com/package/@solana/kora) - Kora JavaScript client
 
 ## License
 

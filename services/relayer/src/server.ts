@@ -2,6 +2,15 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import { Contract, Signature } from "ethers";
 import {
+  Connection,
+  Keypair,
+  Transaction,
+  VersionedTransaction,
+  clusterApiUrl,
+} from "@solana/web3.js";
+import bs58 from "bs58";
+import { KoraClient } from "@solana/kora";
+import {
   verifySignature,
   registry,
   type EIP712Domain,
@@ -24,6 +33,19 @@ import { normalizeAddress, nonceKey } from "./utils.js";
 
 console.log("cwd:", process.cwd());
 console.log("PORT:", process.env.PORT);
+
+// --- Solana relay defaults ---
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || clusterApiUrl("devnet");
+const SOLANA_WS_URL =
+  process.env.SOLANA_WS_URL || SOLANA_RPC_URL.replace("http", "ws");
+const SOLANA_FEE_PAYER_SECRET = process.env.SOLANA_FEE_PAYER_SECRET || "";
+const solanaFeePayerKeypair = SOLANA_FEE_PAYER_SECRET
+  ? Keypair.fromSecretKey(bs58.decode(SOLANA_FEE_PAYER_SECRET))
+  : null;
+const solanaConnection = new Connection(SOLANA_RPC_URL, "confirmed");
+const koraClient = process.env.KORA_RPC_URL
+  ? new KoraClient({ rpcUrl: process.env.KORA_RPC_URL })
+  : null;
 
 const app = express();
 
@@ -56,6 +78,26 @@ const usedNonces = new Set<string>(); // key: chainId|token|from|nonce
 
 // Initialize and log supported chains
 initializeChains();
+
+function decodeSolanaTransaction(encoded: string): Uint8Array {
+  // Accept base64 (preferred) or bs58 inputs
+  try {
+    return Buffer.from(encoded, "base64");
+  } catch {
+    // fallback to bs58
+    return bs58.decode(encoded);
+  }
+}
+
+function deserializeSolanaTransaction(
+  raw: Uint8Array
+): VersionedTransaction | Transaction {
+  try {
+    return VersionedTransaction.deserialize(raw);
+  } catch {
+    return Transaction.from(raw);
+  }
+}
 
 /**
  * GET /api/tokenDomain?token=<address>&chainId=<chainId>
@@ -297,6 +339,204 @@ app.post("/erc3009/relay", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /solana/fee-payer
+ *
+ * Returns the fee payer's public key so clients can include it as a required signer.
+ */
+app.get("/solana/fee-payer", (_req: Request, res: Response) => {
+  if (!solanaFeePayerKeypair) {
+    return res.status(400).json({
+      error: "fee_payer_not_configured",
+      details: "SOLANA_FEE_PAYER_SECRET is not configured",
+    });
+  }
+  return res.json({
+    feePayer: solanaFeePayerKeypair.publicKey.toBase58(),
+  });
+});
+
+/**
+ * POST /solana/relay
+ *
+ * Relays a Solana transaction using the backend fee payer.
+ * The relayer co-signs the transaction and pays SOL fees.
+ * Requires SOLANA_FEE_PAYER_SECRET to be configured.
+ *
+ * IMPORTANT: For VersionedTransaction, the fee payer must be included as a required signer.
+ * Use GET /solana/fee-payer to get the fee payer's public key.
+ * For legacy Transaction, the fee payer can be added via partialSign.
+ *
+ * Request body:
+ * - transaction: string (base64 or base58 encoded)
+ * - waitForConfirmation?: boolean (default true)
+ * - skipPreflight?: boolean (default false)
+ * - rpcUrl?: string (override cluster RPC URL, optional)
+ */
+app.post("/solana/relay", async (req: Request, res: Response) => {
+  try {
+    const {
+      transaction,
+      waitForConfirmation = true,
+      skipPreflight = false,
+      rpcUrl,
+      maxRetries,
+      minContextSlot,
+    } = req.body || {};
+
+    if (!transaction) {
+      return res.status(400).json({ error: "transaction is required" });
+    }
+
+    if (!solanaFeePayerKeypair) {
+      return res.status(400).json({
+        error: "fee_payer_not_configured",
+        details: "SOLANA_FEE_PAYER_SECRET is required for /solana/relay",
+      });
+    }
+
+    const raw = decodeSolanaTransaction(transaction);
+    const connection = new Connection(rpcUrl || SOLANA_RPC_URL, "confirmed");
+
+    // Deserialize transaction (works with both @solana/kit and standard transactions)
+    const tx = deserializeSolanaTransaction(raw);
+    let signature: string;
+
+    if (tx instanceof VersionedTransaction) {
+      // For VersionedTransaction, check if fee payer is a required signer
+      const message = tx.message;
+      const staticAccountKeys = message.staticAccountKeys;
+      const feePayerPubkey = solanaFeePayerKeypair.publicKey;
+
+      const isRequiredSigner = staticAccountKeys.some((key) =>
+        key.equals(feePayerPubkey)
+      );
+
+      if (!isRequiredSigner) {
+        return res.status(400).json({
+          error: "fee_payer_not_required_signer",
+          details:
+            "Fee payer must be included as a required signer in the transaction. " +
+            "Use GET /solana/fee-payer to get the fee payer address and include it when building the transaction.",
+        });
+      }
+
+      // Fee payer is a required signer, add signature
+      tx.sign([solanaFeePayerKeypair]);
+      signature = await connection.sendRawTransaction(tx.serialize(), {
+        skipPreflight,
+        maxRetries,
+        minContextSlot,
+      });
+    } else {
+      // For legacy Transaction, use partialSign
+      tx.partialSign(solanaFeePayerKeypair);
+      signature = await connection.sendRawTransaction(tx.serialize(), {
+        skipPreflight,
+        maxRetries,
+        minContextSlot,
+      });
+    }
+
+    if (waitForConfirmation) {
+      await connection.confirmTransaction(signature, "confirmed");
+    }
+
+    return res.json({
+      signature,
+      cluster: connection.rpcEndpoint,
+      mode: "fee-payer-sign",
+      confirmed: waitForConfirmation,
+    });
+  } catch (err: any) {
+    console.error("Error in /solana/relay:", err);
+    return res.status(500).json({
+      error: "relay_failed",
+      details: err.message || "internal_error",
+    });
+  }
+});
+
+/**
+ * POST /solana/kora
+ *
+ * Relays a Solana transaction using Kora for gasless fee payment.
+ * Kora allows users to pay fees with SPL tokens instead of SOL.
+ * Requires KORA_RPC_URL and KORA_SIGNER_ADDRESS to be configured.
+ *
+ * Request body:
+ * - transaction: string (base64 or base58 encoded)
+ * - koraSigner?: string (required if not set via KORA_SIGNER_ADDRESS env)
+ * - waitForConfirmation?: boolean (default true)
+ * - skipPreflight?: boolean (default false)
+ * - rpcUrl?: string (override cluster RPC URL, optional)
+ */
+app.post("/solana/kora", async (req: Request, res: Response) => {
+  try {
+    const {
+      transaction,
+      koraSigner,
+      waitForConfirmation = true,
+      skipPreflight = false,
+      rpcUrl,
+      maxRetries,
+      minContextSlot,
+    } = req.body || {};
+
+    if (!transaction) {
+      return res.status(400).json({ error: "transaction is required" });
+    }
+
+    if (!koraClient) {
+      return res.status(400).json({
+        error: "kora_not_configured",
+        details: "KORA_RPC_URL is required for /solana/kora",
+      });
+    }
+
+    const signerKey = koraSigner || process.env.KORA_SIGNER_ADDRESS;
+    if (!signerKey) {
+      return res.status(400).json({
+        error: "kora_signer_required",
+        details:
+          "koraSigner is required in request body or KORA_SIGNER_ADDRESS in environment",
+      });
+    }
+
+    const raw = decodeSolanaTransaction(transaction);
+    const connection = new Connection(rpcUrl || SOLANA_RPC_URL, "confirmed");
+
+    const { signed_transaction } = await koraClient.signTransaction({
+      transaction: Buffer.from(raw).toString("base64"),
+      signer_key: signerKey,
+    });
+
+    const signedRaw = Buffer.from(signed_transaction, "base64");
+    const signature = await connection.sendRawTransaction(signedRaw, {
+      skipPreflight,
+      maxRetries,
+      minContextSlot,
+    });
+
+    if (waitForConfirmation) {
+      await connection.confirmTransaction(signature, "confirmed");
+    }
+
+    return res.json({
+      signature,
+      cluster: connection.rpcEndpoint,
+      mode: "kora-sign",
+      confirmed: waitForConfirmation,
+    });
+  } catch (err: any) {
+    console.error("Error in /solana/kora:", err);
+    return res.status(500).json({
+      error: "relay_failed",
+      details: err.message || "internal_error",
+    });
+  }
+});
+
+/**
  * GET /health
  * Health check endpoint
  */
@@ -325,8 +565,13 @@ const port = parseInt(process.env.PORT || "3001", 10);
 app.listen(port, () => {
   console.log(`   Port: ${port}`);
   console.log(`   Health: http://localhost:${port}/health`);
-  console.log(`   Relay: POST http://localhost:${port}/erc3009/relay`);
+  console.log(`   ERC3009 Relay: POST http://localhost:${port}/erc3009/relay`);
   console.log(
-    `   Domain: GET http://localhost:${port}/api/tokenDomain?token=<address>&chainId=<chainId>\n`
+    `   Domain: GET http://localhost:${port}/api/tokenDomain?token=<address>&chainId=<chainId>`
   );
+  console.log(
+    `   Solana Fee Payer: GET http://localhost:${port}/solana/fee-payer`
+  );
+  console.log(`   Solana Relay: POST http://localhost:${port}/solana/relay`);
+  console.log(`   Solana Kora: POST http://localhost:${port}/solana/kora\n`);
 });
