@@ -1,434 +1,388 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { z } from "zod";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import Image from "next/image";
-import { buildDeeplinkUrl } from "@seapay/deeplink";
-import QRCodeStyling from "qr-code-styling";
-import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/container";
-import { TokenSelector } from "./token-selector";
-import { WalletButtons } from "./wallet-buttons";
+
+type FormStatus = "idle" | "submitting" | "success" | "error";
+
+const emailSchema = z.string().email("Please enter a valid email address");
 
 export function Hero() {
+  const [email, setEmail] = useState("");
+  const [formStatus, setFormStatus] = useState<FormStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [utmParams, setUtmParams] = useState<Record<string, string>>({});
+
+  // Extract UTM parameters from URL on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const utm: Record<string, string> = {};
+
+      [
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_term",
+        "utm_content",
+      ].forEach((key) => {
+        const value = params.get(key);
+        if (value) utm[key] = value;
+      });
+
+      setUtmParams(utm);
+    }
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Reset error state
+    setErrorMessage("");
+
+    // Validate email using Zod
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage("Email is required");
+      setFormStatus("error");
+      return;
+    }
+
+    const validationResult = emailSchema.safeParse(trimmedEmail);
+    if (!validationResult.success) {
+      setErrorMessage(
+        validationResult.error.message || "Please enter a valid email address"
+      );
+      setFormStatus("error");
+      return;
+    }
+
+    const validatedEmail = validationResult.data;
+
+    // Prevent double submission
+    if (formStatus === "submitting") {
+      return;
+    }
+
+    setFormStatus("submitting");
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: validatedEmail,
+          source: "website",
+          ...utmParams,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Provide user-friendly error message
+        const errorMessage =
+          data.error ||
+          "Unable to sign up at this time. Please try again later.";
+        throw new Error(errorMessage);
+      }
+
+      setFormStatus("success");
+      setEmail("");
+
+      // Reset success message after 5 seconds
+      setTimeout(() => {
+        setFormStatus("idle");
+      }, 5000);
+    } catch (error) {
+      console.error("Waitlist signup error:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
+      setFormStatus("error");
+    }
+  };
+
   return (
-    <section id='hero' className='relative overflow-hidden'>
-      <Container className='grid items-start gap-4 pb-6 pt-8 sm:gap-6 sm:pb-10 sm:pt-12 lg:grid-cols-[1.1fr_0.9fr] lg:pt-[60px]'>
+    <section id='hero' className='relative overflow-hidden min-h-[calc(100vh-108px)] lg:h-[calc(100vh-108px)] lg:max-h-[692px] flex items-center py-8 lg:py-0'>
+      <Container className='h-full w-full'>
         <div className='absolute -left-20 top-8 gradient-blob' aria-hidden />
         <div
           className='absolute right-[-160px] top-32 gradient-blob'
           aria-hidden
         />
-        <div className='relative z-10 space-y-4 sm:space-y-6'>
-          <h1 className='text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-5xl'>
-            Sending payments should be free. <br className='hidden sm:inline' />
-          </h1>
-          <p className='max-w-xl text-base text-slate-600 sm:text-lg'>
-            Seapay solves the biggest problem in Web3. Now you can get paid in
-            stablecoins using all kind of wallets without gas.
-          </p>
-
-          {/* Supported Chains */}
-          <div className='flex flex-wrap items-center gap-2'>
-            <span className='text-xs font-medium text-slate-500 sm:text-sm'>
-              Supported chains:
-            </span>
-            <div className='flex flex-wrap items-center gap-2'>
-              <Badge
-                variant='outline'
-                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
-              >
-                <Image
-                  src='/ethereum-icon.svg'
-                  alt='Ethereum'
-                  width={14}
-                  height={14}
-                  className='inline-block'
-                />
-                <span>Ethereum</span>
-              </Badge>
-              <Badge
-                variant='outline'
-                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
-              >
-                <Image
-                  src='/base-chain-icon.svg'
-                  alt='Base'
-                  width={14}
-                  height={14}
-                  className='inline-block'
-                />
-                <span>Base</span>
-              </Badge>
-              <Badge
-                variant='outline'
-                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
-              >
-                <Image
-                  src='/polygon-icon.svg'
-                  alt='Polygon'
-                  width={14}
-                  height={14}
-                  className='inline-block'
-                />
-                <span>Polygon</span>
-              </Badge>
-              <Badge
-                variant='outline'
-                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
-              >
-                <Image
-                  src='/solana-logo.svg'
-                  alt='Solana'
-                  width={14}
-                  height={14}
-                  className='inline-block'
-                />
-                <span>Solana</span>
-              </Badge>
-              <Badge
-                variant='outline'
-                className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm h-7 w-24 sm:h-8 sm:w-28'
-              >
-                <Image
-                  src='/bnb-logo.svg'
-                  alt='BNB Chain'
-                  width={14}
-                  height={14}
-                  className='inline-block'
-                />
-                <span>BNB Chain</span>
-              </Badge>
+        
+        <div className='relative z-10 grid gap-8 lg:grid-cols-[1fr_0.85fr] lg:gap-6 h-full items-center'>
+          {/* Left side: Content + Newsletter */}
+          <div className='flex flex-col gap-4 sm:gap-6 justify-center'>
+            {/* Text Content */}
+            <div className='space-y-3 sm:space-y-4 text-center lg:text-left'>
+              <h1 className='text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-5xl'>
+                Seapay enables APAC students to spend money abroad
+              </h1>
+              <p className='text-sm text-slate-600 sm:text-base lg:text-lg'>
+                We specialize in enabling APAC international students to spend money abroad with their local bank accounts.
+              </p>
             </div>
-          </div>
-        </div>
-        <CheckoutDemo />
-      </Container>
-    </section>
-  );
-}
 
-function CheckoutDemo() {
-  const [amount, setAmount] = useState("");
-  const [fiatCurrency] = useState<"USD" | "EUR">("USD");
-  const [currency, setCurrency] = useState("USDC-BASE");
-  const [receiver, setReceiver] = useState("");
-  const [cryptoPrice, setCryptoPrice] = useState<number>(1);
-  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
-  const qrCodeRef = useRef<HTMLDivElement>(null);
-  const qrCodeInstance = useRef<QRCodeStyling | null>(null);
-  const [qrSize, setQrSize] = useState(300);
+            {/* Newsletter Signup */}
+            <div className='rounded-lg bg-white/80 backdrop-blur-sm border border-slate-200 p-3 sm:p-4 lg:p-6'>
+              <div className='space-y-3 sm:space-y-4'>
+                {/* Contact Links */}
+                <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3'>
+                  <span className='text-xs sm:text-sm font-medium text-slate-600'>Contact:</span>
+                  <div className='flex items-center gap-2'>
+                    <Link
+                      href='https://twitter.com'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+                      aria-label='Follow us on X'
+                    >
+                      <Image
+                        src='/x-icon.svg'
+                        alt='X'
+                        width={16}
+                        height={16}
+                        className='h-4 w-4'
+                      />
+                    </Link>
+                    <Link
+                      href='https://discord.com'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+                      aria-label='Join our Discord'
+                    >
+                      <Image
+                        src='/discord-logo.svg'
+                        alt='Discord'
+                        width={16}
+                        height={16}
+                        className='h-4 w-4'
+                      />
+                    </Link>
+                    <Link
+                      href='https://telegram.org'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+                      aria-label='Join our Telegram'
+                    >
+                      <Image
+                        src='/telegram-icon.svg'
+                        alt='Telegram'
+                        width={16}
+                        height={16}
+                        className='h-4 w-4'
+                      />
+                    </Link>
+                  </div>
+                </div>
 
-  // Calculate responsive QR code size
-  useEffect(() => {
-    const updateQrSize = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        // Mobile: smaller QR code
-        setQrSize(240);
-      } else if (width < 1024) {
-        // Tablet: medium QR code
-        setQrSize(280);
-      } else {
-        // Desktop: full size
-        setQrSize(300);
-      }
-    };
+                {/* Form Status Messages */}
+                {formStatus === "error" && errorMessage && (
+                  <div className='flex items-center gap-2 text-sm text-red-600'>
+                    <AlertCircle className='h-4 w-4 flex-shrink-0' />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+                {formStatus === "success" && (
+                  <div className='flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700'>
+                    <CheckCircle2 className='h-4 w-4 flex-shrink-0' />
+                    <span className='font-medium'>
+                      Successfully added to waitlist!
+                    </span>
+                  </div>
+                )}
 
-    updateQrSize();
-    window.addEventListener("resize", updateQrSize);
-    return () => window.removeEventListener("resize", updateQrSize);
-  }, []);
-
-  // Parse amount by removing commas
-  const parseAmount = (value: string): number => {
-    const cleaned = value.replace(/,/g, "");
-    return parseFloat(cleaned) || 0;
-  };
-
-  const fiatAmount = parseAmount(amount);
-  const cryptoAmount = cryptoPrice > 0 ? fiatAmount / cryptoPrice : 0;
-
-  // Validate Ethereum address
-  const isValidEthereumAddress = (address: string): boolean => {
-    // Ethereum addresses are 42 characters: 0x followed by 40 hex characters
-    const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-    return ethereumAddressRegex.test(address);
-  };
-
-  const isReceiverValid = isValidEthereumAddress(receiver);
-
-  // Fetch crypto price from CoinGecko
-  useEffect(() => {
-    const fetchPrice = async () => {
-      try {
-        setIsLoadingPrice(true);
-        const [token] = currency.split("-");
-
-        // Map token symbols to CoinGecko IDs
-        const coinGeckoIds: Record<string, string> = {
-          USDC: "usd-coin",
-          USDT: "tether",
-          ETH: "ethereum",
-          BTC: "bitcoin",
-        };
-
-        const coinId = coinGeckoIds[token] || "usd-coin";
-        const vsCurrency = fiatCurrency.toLowerCase();
-
-        const apiKey = process.env.NEXT_PUBLIC_COIN_GECKO_API_KEY || "";
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}&x_cg_demo_api_key=${apiKey}`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch price");
-        }
-
-        const data = await response.json();
-        const price = data[coinId]?.[vsCurrency];
-
-        if (price) {
-          setCryptoPrice(price);
-        }
-      } catch (error) {
-        console.error("Failed to fetch crypto price:", error);
-        // Default to 1:1 for stablecoins if fetch fails
-        setCryptoPrice(1);
-      } finally {
-        setIsLoadingPrice(false);
-      }
-    };
-
-    fetchPrice();
-  }, [currency, fiatCurrency]);
-
-  useEffect(() => {
-    const generateQrCode = async () => {
-      try {
-        // Build payment URL with parameters
-        const params = new URLSearchParams();
-        if (receiver) {
-          params.set("address", receiver);
-        }
-        // Use the converted crypto amount instead of fiat amount
-        if (amount && cryptoAmount > 0) {
-          params.set("amount", cryptoAmount.toFixed(6));
-        }
-        if (currency) {
-          const [token] = currency.split("-");
-          params.set("asset", token);
-        }
-
-        // Create full URL and encode it for deeplink
-        const paymentUrl = `app.seapay.ai/pay-mobile?${params.toString()}`;
-        const deeplinkUrl = buildDeeplinkUrl(paymentUrl);
-        console.log("Deeplink URL:", deeplinkUrl);
-
-        // Create or update QR code with styling
-        if (!qrCodeInstance.current) {
-          qrCodeInstance.current = new QRCodeStyling({
-            width: qrSize,
-            height: qrSize,
-            data: deeplinkUrl,
-            margin: 4,
-            qrOptions: {
-              typeNumber: 0,
-              mode: "Byte",
-              errorCorrectionLevel: "Q",
-            },
-            imageOptions: {
-              hideBackgroundDots: true,
-              imageSize: 0.4,
-              margin: 8,
-            },
-            dotsOptions: {
-              color: "#1e293b",
-              type: "rounded",
-            },
-            backgroundOptions: {
-              color: "#ffffff",
-            },
-            cornersSquareOptions: {
-              color: "#0f172a",
-              type: "extra-rounded",
-            },
-            cornersDotOptions: {
-              color: "#0f172a",
-              type: "dot",
-            },
-          });
-        } else {
-          qrCodeInstance.current.update({
-            data: deeplinkUrl,
-            width: qrSize,
-            height: qrSize,
-          });
-        }
-
-        // Append to DOM if ref is available
-        if (qrCodeRef.current) {
-          qrCodeRef.current.innerHTML = "";
-          qrCodeInstance.current.append(qrCodeRef.current);
-        }
-      } catch (error) {
-        console.error("Failed to generate QR code:", error);
-      }
-    };
-
-    generateQrCode();
-  }, [receiver, amount, currency, cryptoAmount, qrSize]);
-
-  const tokenOptions = [
-    { token: "USDC", blockchain: "Base", value: "USDC-BASE" },
-    { token: "USDC", blockchain: "Polygon", value: "USDC-POLYGON" },
-    { token: "USDC", blockchain: "Ethereum", value: "USDC-ETHEREUM" },
-    { token: "USDC", blockchain: "Solana", value: "USDC-SOLANA" },
-    { token: "USDT", blockchain: "BNB", value: "USDT-BNB" },
-  ];
-
-  const formatAmount = (value: string): string => {
-    // Remove all non-digit characters except decimal point
-    const cleaned = value.replace(/[^\d.]/g, "");
-
-    // Split by decimal point
-    const parts = cleaned.split(".");
-
-    // Format integer part with commas
-    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-    // Limit decimal part to 2 digits
-    const decimalPart = parts[1] ? parts[1].slice(0, 2) : "";
-
-    // Combine
-    if (decimalPart) {
-      return `${integerPart}.${decimalPart}`;
-    } else if (cleaned.includes(".")) {
-      return `${integerPart}.`;
-    } else {
-      return integerPart;
-    }
-  };
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-
-    // Allow empty string
-    if (value === "") {
-      setAmount("");
-      return;
-    }
-
-    // Format the value
-    const formatted = formatAmount(value);
-    setAmount(formatted);
-  };
-
-  return (
-    <Card className='relative z-10 glass border-slate-200/60'>
-      <CardContent className='space-y-3 pt-3 pb-4 sm:space-y-4 sm:pt-4 sm:pb-6'>
-        {/* QR Code Display Area */}
-        <div className='flex items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 mx-auto p-1 w-full max-w-[256px] aspect-square sm:max-w-[296px] lg:max-w-[316px]'>
-          <div
-            ref={qrCodeRef}
-            className='flex items-center justify-center w-full h-full'
-          />
-        </div>
-
-        {/* Money Input and Token Selector */}
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-          {/* Money Input Box - 50% width */}
-          <div className='flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden flex-1 h-14'>
-            {/* Currency Symbol Segment */}
-            <div className='flex items-center justify-center h-14 pl-5 pr-4 bg-slate-100 border-r border-slate-200 sm:pl-6 sm:pr-5'>
-              <span className='text-lg font-bold text-slate-900 sm:text-xl'>
-                $
-              </span>
-            </div>
-            {/* Amount Input */}
-            <div className='flex-1'>
-              <Input
-                type='text'
-                inputMode='decimal'
-                value={amount}
-                onChange={handleAmountChange}
-                placeholder='1,000.00'
-                className='h-14 border-0 rounded-none text-base font-semibold text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none sm:text-lg'
-              />
+                {/* Form */}
+                {formStatus !== "success" && (
+                  <form onSubmit={handleSubmit} className='space-y-2 sm:space-y-3'>
+                    <Input
+                      type='email'
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (formStatus === "error") {
+                          setFormStatus("idle");
+                          setErrorMessage("");
+                        }
+                      }}
+                      placeholder='Enter your email'
+                      required
+                      disabled={formStatus === "submitting"}
+                      autoComplete='email'
+                      className='h-10 sm:h-12 w-full rounded-lg border-slate-200 bg-white px-3 sm:px-4 text-sm sm:text-base font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-sky-200'
+                      aria-invalid={formStatus === "error"}
+                      aria-label='Enter your email'
+                    />
+                    <div className='flex flex-col gap-2 sm:gap-3'>
+                      <p className='text-xs text-slate-600 sm:text-sm'>
+                        Sign up for our newsletter and be first to try the product.
+                      </p>
+                      <Button
+                        type='submit'
+                        disabled={formStatus === "submitting"}
+                        className='h-9 sm:h-10 w-full sm:w-auto rounded-full bg-sky-600 px-6 text-sm font-medium text-white hover:bg-sky-700 whitespace-nowrap'
+                      >
+                        {formStatus === "submitting" ? "..." : "Sign up"}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Crypto Currency Selector - 50% width */}
-          <div className='flex-1'>
-            <TokenSelector
-              value={currency}
-              onChangeAction={setCurrency}
-              options={tokenOptions}
-            />
-          </div>
-        </div>
-
-        {/* Transaction Details */}
-        <div className='space-y-2'>
-          {/* Receiver */}
-          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
-            <div className='flex w-full items-center justify-between gap-3'>
-              {isReceiverValid ? (
-                <Image
-                  src='/ethereum-icon.svg'
-                  alt='Ethereum'
-                  width={24}
-                  height={24}
-                  className='flex-shrink-0'
-                />
-              ) : (
-                <span className='text-sm font-bold text-slate-900 sm:text-base'>
-                  Receiver:
-                </span>
-              )}
-              <Input
-                type='text'
-                value={receiver}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setReceiver(e.target.value)
-                }
-                placeholder='EVM (0x...) / Solana / Bitcoin address...'
-                className='h-14 flex-1 border-0 bg-transparent p-0 text-left text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 placeholder:text-left sm:text-base'
-              />
-            </div>
-          </div>
-
-          {/* Quote */}
-          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
-            <div className='flex flex-wrap items-center gap-2 text-sm text-slate-900 sm:gap-2.5 sm:text-base'>
-              <span className='whitespace-nowrap font-bold'>Quote:</span>
-              <span className='whitespace-nowrap font-medium'>
-                {amount || "0"} {fiatCurrency} →
-              </span>
-              <span className='whitespace-nowrap font-medium'>
-                {isLoadingPrice ? "..." : cryptoAmount.toFixed(2)}
-              </span>
-              <div className='flex items-center gap-1.5 font-medium'>
-                <Image
-                  src={
-                    currency.startsWith("USDC")
-                      ? "/usdc-logo.svg"
-                      : "/tether-logo.svg"
-                  }
-                  alt={currency.split("-")[0]}
-                  width={18}
-                  height={18}
-                  className='inline-block sm:w-5 sm:h-5'
-                />
-                <span>{currency.split("-")[0]}</span>
+          {/* Right side: iPhone Mockup */}
+          <div className='relative hidden lg:flex justify-center lg:justify-end'>
+            <div className='relative'>
+              {/* iPhone Frame */}
+              <div className='relative w-[240px] xl:w-[300px] 2xl:w-[360px]'>
+                {/* Phone outer frame with notch */}
+                <div className='relative rounded-[2rem] xl:rounded-[2.5rem] bg-slate-900 p-1.5 xl:p-2 shadow-2xl ring-1 ring-slate-900/10'>
+                  {/* Screen */}
+                  <div className='relative overflow-hidden rounded-[1.75rem] xl:rounded-[2rem] bg-white'>
+                    {/* Notch */}
+                    <div className='absolute left-1/2 top-0 z-10 h-5 xl:h-6 w-24 xl:w-32 -translate-x-1/2 rounded-b-3xl bg-slate-900' />
+                    
+                    {/* Screen Content */}
+                    <div className='relative aspect-[9/19.5] bg-gradient-to-br from-sky-50 to-slate-50'>
+                      {/* App UI Preview */}
+                      <div className='flex h-full flex-col p-4 xl:p-6 pt-8 xl:pt-10 pb-16 xl:pb-20'>
+                        {/* Header */}
+                        <div className='mb-6 xl:mb-8 text-center'>
+                          <h3 className='text-lg xl:text-xl font-bold text-slate-900'>Seapay</h3>
+                          <p className='text-[10px] xl:text-xs text-slate-600'>Payment App</p>
+                        </div>
+                        
+                        {/* Balance Card */}
+                        <div className='mb-4 xl:mb-6 rounded-xl xl:rounded-2xl bg-gradient-to-br from-sky-600 to-sky-700 p-4 xl:p-6 shadow-lg'>
+                          <p className='text-[10px] xl:text-xs text-sky-100'>Total Balance</p>
+                          <p className='mt-1 xl:mt-2 text-2xl xl:text-3xl font-bold text-white'>$1,250.00</p>
+                          <p className='mt-0.5 xl:mt-1 text-[10px] xl:text-xs text-sky-100'>≈ 1,250 USDC</p>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className='mb-4 xl:mb-6 grid grid-cols-3 gap-2 xl:gap-3'>
+                          <div className='flex flex-col items-center gap-1 xl:gap-2'>
+                            <div className='flex h-10 w-10 xl:h-12 xl:w-12 items-center justify-center rounded-full bg-sky-100'>
+                              <svg className='h-5 w-5 xl:h-6 xl:w-6 text-sky-700' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v16m8-8H4' />
+                              </svg>
+                            </div>
+                            <span className='text-[9px] xl:text-[10px] text-slate-600'>Send</span>
+                          </div>
+                          <div className='flex flex-col items-center gap-1 xl:gap-2'>
+                            <div className='flex h-10 w-10 xl:h-12 xl:w-12 items-center justify-center rounded-full bg-sky-100'>
+                              <svg className='h-5 w-5 xl:h-6 xl:w-6 text-sky-700' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v16m8-8H4' />
+                              </svg>
+                            </div>
+                            <span className='text-[9px] xl:text-[10px] text-slate-600'>Receive</span>
+                          </div>
+                          <div className='flex flex-col items-center gap-1 xl:gap-2'>
+                            <div className='flex h-10 w-10 xl:h-12 xl:w-12 items-center justify-center rounded-full bg-sky-100'>
+                              <svg className='h-5 w-5 xl:h-6 xl:w-6 text-sky-700' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z' />
+                              </svg>
+                            </div>
+                            <span className='text-[9px] xl:text-[10px] text-slate-600'>Scan</span>
+                          </div>
+                        </div>
+                        
+                        {/* Recent Transactions */}
+                        <div className='flex-1 space-y-2 xl:space-y-3'>
+                          <h4 className='text-[10px] xl:text-xs font-semibold text-slate-900'>Recent</h4>
+                          <div className='space-y-1.5 xl:space-y-2'>
+                            <div className='flex items-center justify-between rounded-lg bg-white p-2 xl:p-3 shadow-sm'>
+                              <div className='flex items-center gap-2 xl:gap-3'>
+                                <div className='h-6 w-6 xl:h-8 xl:w-8 rounded-full bg-emerald-100' />
+                                <div>
+                                  <p className='text-[10px] xl:text-[11px] font-medium text-slate-900'>Coffee Shop</p>
+                                  <p className='text-[8px] xl:text-[9px] text-slate-500'>Today, 2:30 PM</p>
+                                </div>
+                              </div>
+                              <p className='text-[10px] xl:text-xs font-semibold text-slate-900'>-$4.50</p>
+                            </div>
+                            <div className='flex items-center justify-between rounded-lg bg-white p-2 xl:p-3 shadow-sm'>
+                              <div className='flex items-center gap-2 xl:gap-3'>
+                                <div className='h-6 w-6 xl:h-8 xl:w-8 rounded-full bg-sky-100' />
+                                <div>
+                                  <p className='text-[10px] xl:text-[11px] font-medium text-slate-900'>Grocery Store</p>
+                                  <p className='text-[8px] xl:text-[9px] text-slate-500'>Yesterday</p>
+                                </div>
+                              </div>
+                              <p className='text-[10px] xl:text-xs font-semibold text-slate-900'>-$42.30</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Bottom Navigation */}
+                      <div className='absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200'>
+                        <div className='grid grid-cols-4 gap-0.5 xl:gap-1 px-2 xl:px-4 py-2 xl:py-3'>
+                          {/* Home */}
+                          <button className='flex flex-col items-center gap-0.5 xl:gap-1'>
+                            <svg className='h-4 w-4 xl:h-5 xl:w-5 text-sky-600' fill='currentColor' viewBox='0 0 24 24'>
+                              <path d='M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' />
+                            </svg>
+                            <span className='text-[8px] xl:text-[9px] font-medium text-sky-600'>Home</span>
+                          </button>
+                          
+                          {/* Invest */}
+                          <button className='flex flex-col items-center gap-0.5 xl:gap-1'>
+                            <svg className='h-4 w-4 xl:h-5 xl:w-5 text-slate-400' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' />
+                            </svg>
+                            <span className='text-[8px] xl:text-[9px] font-medium text-slate-400'>Invest</span>
+                          </button>
+                          
+                          {/* Payment */}
+                          <button className='flex flex-col items-center gap-0.5 xl:gap-1'>
+                            <svg className='h-4 w-4 xl:h-5 xl:w-5 text-slate-400' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' />
+                            </svg>
+                            <span className='text-[8px] xl:text-[9px] font-medium text-slate-400'>Payment</span>
+                          </button>
+                          
+                          {/* Setting */}
+                          <button className='flex flex-col items-center gap-0.5 xl:gap-1'>
+                            <svg className='h-4 w-4 xl:h-5 xl:w-5 text-slate-400' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' />
+                              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 12a3 3 0 11-6 0 3 3 0 016 0z' />
+                            </svg>
+                            <span className='text-[8px] xl:text-[9px] font-medium text-slate-400'>Setting</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Floating elements around phone - hidden on smaller screens */}
+                <div className='hidden xl:block absolute -right-4 top-20 rounded-lg bg-white px-3 py-2 shadow-lg ring-1 ring-slate-900/5'>
+                  <p className='text-xs font-semibold text-emerald-600'>Instant</p>
+                </div>
+                <div className='hidden xl:block absolute -left-4 top-40 rounded-lg bg-white px-3 py-2 shadow-lg ring-1 ring-slate-900/5'>
+                  <p className='text-xs font-semibold text-sky-600'>Secure</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        <WalletButtons />
-      </CardContent>
-    </Card>
+      </Container>
+    </section>
   );
 }
