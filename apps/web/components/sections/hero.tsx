@@ -128,67 +128,16 @@ export function Hero() {
             {/* Text Content */}
             <div className='space-y-3 sm:space-y-4 text-center lg:text-left'>
               <h1 className='text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-5xl'>
-                Seapay enables APAC students to spend money abroad
+                Start to Spend and Invest Asia <span className='text-sky-600'>&lt;-&gt;</span> Worldwide
               </h1>
               <p className='text-sm text-slate-600 sm:text-base lg:text-lg'>
-                We specialize in enabling APAC international students to spend money abroad with their local bank accounts.
+                We enable APAC international students to spend abroad and invest in U.S. stocks with their parents' money.
               </p>
             </div>
 
             {/* Newsletter Signup */}
             <div className='rounded-lg bg-white/80 backdrop-blur-sm border border-slate-200 p-3 sm:p-4 lg:p-6'>
               <div className='space-y-3 sm:space-y-4'>
-                {/* Contact Links */}
-                <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3'>
-                  <span className='text-xs sm:text-sm font-medium text-slate-600'>Contact:</span>
-                  <div className='flex items-center gap-2'>
-                    <Link
-                      href='https://twitter.com'
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-                      aria-label='Follow us on X'
-                    >
-                      <Image
-                        src='/x-icon.svg'
-                        alt='X'
-                        width={16}
-                        height={16}
-                        className='h-4 w-4'
-                      />
-                    </Link>
-                    <Link
-                      href='https://discord.com'
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-                      aria-label='Join our Discord'
-                    >
-                      <Image
-                        src='/discord-logo.svg'
-                        alt='Discord'
-                        width={16}
-                        height={16}
-                        className='h-4 w-4'
-                      />
-                    </Link>
-                    <Link
-                      href='https://telegram.org'
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-                      aria-label='Join our Telegram'
-                    >
-                      <Image
-                        src='/telegram-icon.svg'
-                        alt='Telegram'
-                        width={16}
-                        height={16}
-                        className='h-4 w-4'
-                      />
-                    </Link>
-                  </div>
-                </div>
 
                 {/* Form Status Messages */}
                 {formStatus === "error" && errorMessage && (
@@ -208,45 +157,99 @@ export function Hero() {
 
                 {/* Form */}
                 {formStatus !== "success" && (
-                  <form onSubmit={handleSubmit} className='space-y-2 sm:space-y-3'>
-                    <Input
-                      type='email'
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (formStatus === "error") {
-                          setFormStatus("idle");
-                          setErrorMessage("");
-                        }
-                      }}
-                      placeholder='Enter your email'
-                      required
-                      disabled={formStatus === "submitting"}
-                      autoComplete='email'
-                      className='h-10 sm:h-12 w-full rounded-lg border-slate-200 bg-white px-3 sm:px-4 text-sm sm:text-base font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-sky-200'
-                      aria-invalid={formStatus === "error"}
-                      aria-label='Enter your email'
-                    />
-                    <div className='flex flex-col gap-2 sm:gap-3'>
-                      <p className='text-xs text-slate-600 sm:text-sm'>
-                        Sign up for our newsletter and be first to try the product.
-                      </p>
+                  <form onSubmit={handleSubmit} className='space-y-3'>
+                    <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
+                      <input
+                        type='email'
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (formStatus === "error") {
+                            setFormStatus("idle");
+                            setErrorMessage("");
+                          }
+                        }}
+                        placeholder='you@email.com'
+                        required
+                        disabled={formStatus === "submitting"}
+                        autoComplete='email'
+                        className='w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200'
+                        aria-invalid={formStatus === "error"}
+                        aria-label='Enter your email'
+                      />
                       <Button
                         type='submit'
                         disabled={formStatus === "submitting"}
-                        className='h-9 sm:h-10 w-full sm:w-auto rounded-full bg-sky-600 px-6 text-sm font-medium text-white hover:bg-sky-700 whitespace-nowrap'
+                        className='h-11 w-full rounded-full bg-sky-600 px-6 text-sm font-medium text-white hover:bg-sky-700 sm:w-auto'
                       >
                         {formStatus === "submitting" ? "..." : "Sign up"}
                       </Button>
                     </div>
+                    <p className='text-xs text-slate-600 sm:text-sm'>
+                      Sign up for our newsletter and be first to try the product.
+                    </p>
                   </form>
                 )}
+              </div>
+            </div>
+
+            {/* Contact Links */}
+            <div className='rounded-lg bg-white/70 backdrop-blur-sm border border-slate-200 p-3 sm:p-4'>
+              <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3'>
+                <span className='text-xs sm:text-sm font-medium text-slate-600'>Contact:</span>
+                <div className='flex items-center gap-2'>
+                  <Link
+                    href='https://x.com/seapayAI'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+                    aria-label='Follow us on X'
+                  >
+                    <Image
+                      src='/x-icon.svg'
+                      alt='X'
+                      width={16}
+                      height={16}
+                      className='h-4 w-4'
+                    />
+                  </Link>
+                  {/* <Link
+                    href='https://discord.gg/seapayAI'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+                    aria-label='Join our Discord'
+                  >
+                    <Image
+                      src='/discord-logo.svg'
+                      alt='Discord'
+                      width={16}
+                      height={16}
+                      className='h-4 w-4'
+                    />
+                  </Link> */}
+                  <Link
+                    href='https://t.me/seapayai'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+                    aria-label='Join our Telegram'
+                  >
+                    <Image
+                      src='/telegram-icon.svg'
+                      alt='Telegram'
+                      width={16}
+                      height={16}
+                      className='h-4 w-4'
+                    />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Right side: iPhone Mockup */}
-          <div className='relative hidden lg:flex justify-center lg:justify-end'>
+          <div className='relative hidden w-full lg:flex items-center justify-center'>
             <div className='relative'>
               {/* iPhone Frame */}
               <div className='relative w-[240px] xl:w-[300px] 2xl:w-[360px]'>
@@ -254,17 +257,43 @@ export function Hero() {
                 <div className='relative rounded-[2rem] xl:rounded-[2.5rem] bg-slate-900 p-1.5 xl:p-2 shadow-2xl ring-1 ring-slate-900/10'>
                   {/* Screen */}
                   <div className='relative overflow-hidden rounded-[1.75rem] xl:rounded-[2rem] bg-white'>
-                    {/* Notch */}
-                    <div className='absolute left-1/2 top-0 z-10 h-5 xl:h-6 w-24 xl:w-32 -translate-x-1/2 rounded-b-3xl bg-slate-900' />
+                    {/* Floating island + status bar */}
+                    <div className='absolute top-2 xl:top-3 left-0 right-0 z-10 flex items-center justify-between px-4 xl:px-5 text-[9px] xl:text-[10px] font-medium text-slate-900'>
+                      <div className='flex w-[36%] items-center justify-center'>
+                        <span>9:41</span>
+                      </div>
+                      <div className='absolute left-1/2 top-1/2 h-4 xl:h-5 w-20 xl:w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900 shadow-md' />
+                      <div className='flex items-center gap-1.5 xl:gap-2 text-slate-900'>
+                        <div className='flex items-end gap-[2px]'>
+                          <span className='h-1.5 w-0.5 rounded-sm bg-slate-900' />
+                          <span className='h-2 w-0.5 rounded-sm bg-slate-900' />
+                          <span className='h-2.5 w-0.5 rounded-sm bg-slate-900' />
+                          <span className='h-3 w-0.5 rounded-sm bg-slate-900' />
+                        </div>
+                        <svg
+                          className='h-3 w-4 text-slate-900'
+                          viewBox='0 0 20 12'
+                          fill='none'
+                          stroke='currentColor'
+                          strokeWidth='1.5'
+                          strokeLinecap='round'
+                        >
+                          <path d='M2 4.5c4-4 12-4 16 0' />
+                          <path d='M5 7c2.5-2.5 7.5-2.5 10 0' />
+                          <path d='M9.5 10.2h1' />
+                        </svg>
+                        <div className='relative h-2.5 w-3 rounded-sm border border-slate-900'>
+                          <span className='absolute left-0.5 top-0.5 h-1.5 w-1.5 rounded-sm bg-slate-900' />
+                          <span className='absolute -right-1 top-1/2 h-1 w-0.5 -translate-y-1/2 rounded-sm bg-slate-900' />
+                        </div>
+                      </div>
+                    </div>
                     
                     {/* Screen Content */}
                     <div className='relative aspect-[9/19.5] bg-gradient-to-br from-sky-50 to-slate-50'>
                       {/* App UI Preview */}
                       <div className='flex h-full flex-col p-4 xl:p-6 pt-8 xl:pt-10 pb-16 xl:pb-20'>
-                        {/* Header */}
-                        <div className='mb-6 xl:mb-8 text-center'>
-                          <h3 className='text-lg xl:text-xl font-bold text-slate-900'>Seapay</h3>
-                          <p className='text-[10px] xl:text-xs text-slate-600'>Payment App</p>
+                        <div className='mb-6 xl:mb-8 '>
                         </div>
                         
                         {/* Balance Card */}
