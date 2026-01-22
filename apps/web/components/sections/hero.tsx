@@ -134,7 +134,7 @@ export function Hero() {
                 Asia <span className='text-sky-600'>&lt;-&gt;</span> Worldwide
               </h2>
               <p className='text-sm text-slate-600 sm:text-base lg:text-lg'>
-                We enable APAC international students to spend and invest in U.S. stocks with their parents' money.
+                We enable APAC international students to spend and invest in U.S. stocks.
               </p> 
             </div>
 
@@ -172,7 +172,7 @@ export function Hero() {
                             setErrorMessage("");
                           }
                         }}
-                        placeholder='you@email.com'
+                        placeholder='abg@email.com'
                         required
                         disabled={formStatus === "submitting"}
                         autoComplete='email'
