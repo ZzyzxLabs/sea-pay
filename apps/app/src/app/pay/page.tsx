@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { buildDeeplinkUrl } from "@seapay/deeplink";
+import { buildDeeplinkUrl, WalletType } from "@seapay/deeplink";
 import { chains } from "@/lib/web3/chains";
 import styles from "./pay.module.css";
 
@@ -33,20 +33,15 @@ function PayPageContent() {
 
     const payMobileUrl = `https://app.seapay.ai/pay-mobile?${params.toString()}`;
 
-    if (walletType === "coinbase") {
-      // Use buildDeeplinkUrl for Coinbase Wallet
-      const deeplinkUrl = buildDeeplinkUrl(payMobileUrl);
-      window.location.href = deeplinkUrl;
-    } else if (walletType === "metamask") {
-      // MetaMask uses a different URL scheme
-      // For now, redirect to the pay-mobile page directly
-      // MetaMask browser extension will handle the connection
-      window.location.href = payMobileUrl;
-    } else if (walletType === "phantom") {
-      // Phantom uses solana: URL scheme
-      // For now, redirect to pay-mobile page
-      window.location.href = payMobileUrl;
-    }
+    // Map wallet type string to WalletType enum
+    const walletTypeMap: Record<"coinbase" | "metamask" | "phantom", WalletType> = {
+      coinbase: WalletType.COINBASE,
+      metamask: WalletType.METAMASK,
+      phantom: WalletType.PHANTOM,
+    };
+
+    const deeplinkUrl = buildDeeplinkUrl(payMobileUrl, walletTypeMap[walletType]);
+    window.location.href = deeplinkUrl;
   };
 
   return (
