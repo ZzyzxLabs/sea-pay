@@ -7,19 +7,18 @@ export enum WalletType {
 
 export function buildDeeplinkUrl(
   dappUrl: string,
-  walletType: WalletType = WalletType.COINBASE
+  walletType: WalletType = WalletType.COINBASE,
+  ref: string = ""
 ): string {
   const encodedUrl = encodeURIComponent(dappUrl);
-
+  const encodedRef = encodeURIComponent(ref);
   switch (walletType) {
     case WalletType.COINBASE:
       return `cbwallet://dapp?url=${encodedUrl}`;
     case WalletType.METAMASK:
       return `https://metamask.app.link/dapp/${dappUrl}`;
     case WalletType.PHANTOM:
-      // Phantom uses solana: URL scheme for Solana dapps
-      // For EVM dapps, we can use a generic approach or redirect to browser
-      return dappUrl; // For now, return the URL as-is (can be enhanced later)
+      return `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
     default:
       throw new Error(`Unsupported wallet type: ${walletType}`);
   }

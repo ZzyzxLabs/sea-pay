@@ -40,7 +40,8 @@ function PayPageContent() {
       phantom: WalletType.PHANTOM,
     };
 
-    const deeplinkUrl = buildDeeplinkUrl(payMobileUrl, walletTypeMap[walletType]);
+    const currentRef = window.location.origin;
+    const deeplinkUrl = buildDeeplinkUrl(payMobileUrl, walletTypeMap[walletType], currentRef);
     window.location.href = deeplinkUrl;
   };
 
