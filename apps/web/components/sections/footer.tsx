@@ -1,32 +1,45 @@
+import Link from "next/link";
+import Image from "next/image";
 import { Container } from "@/components/container";
 
 export function Footer() {
-  const links = [
-    { label: "Docs", href: "https://docs.seapay.example" },
-    { label: "Terms", href: "#terms" },
-    { label: "Privacy", href: "#privacy" },
-    { label: "Status", href: "https://status.seapay.example" },
-    { label: "Contact", href: "mailto:hello@seapay.finance" },
-  ];
-
   return (
     <footer className="mt-16 border-t border-slate-200/70 bg-white/80">
-      <Container className="flex flex-col gap-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="text-base font-semibold text-slate-900">Seapay</div>
-          <p className="text-sm text-slate-500">Stablecoin payments for internet businesses.</p>
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} Seapay. All rights reserved.</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {links.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="rounded-md px-2 py-1 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
-            >
-              {link.label}
-            </a>
-          ))}
+      <Container className="flex flex-col items-center gap-4 py-6 text-sm text-slate-600 sm:flex-row sm:justify-between">
+        <p className="text-xs text-slate-400">
+          © {new Date().getFullYear()} Seapay. All rights reserved.
+        </p>
+        <div className="flex items-center gap-3">
+          <Link
+            href='https://x.com/seapayAI'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+            aria-label='Follow us on X'
+          >
+            <Image
+              src='/x-icon.svg'
+              alt='X'
+              width={16}
+              height={16}
+              className='h-4 w-4'
+            />
+          </Link>
+          <Link
+            href='https://t.me/seapayai'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
+            aria-label='Join our Telegram'
+          >
+            <Image
+              src='/telegram-icon.svg'
+              alt='Telegram'
+              width={16}
+              height={16}
+              className='h-4 w-4'
+            />
+          </Link>
         </div>
       </Container>
     </footer>
