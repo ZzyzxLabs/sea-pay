@@ -31,7 +31,8 @@ function PayPageContent() {
       params.set("chain", selectedChain.id.toString());
     }
 
-    const payMobileUrl = `https://app.seapay.ai/pay-mobile?${params.toString()}`;
+    const root = window.location.origin;
+    const payMobileUrl = `${root}/pay-mobile?${params.toString()}`;
 
     // Map wallet type string to WalletType enum
     const walletTypeMap: Record<"coinbase" | "metamask" | "phantom", WalletType> = {

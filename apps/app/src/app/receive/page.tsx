@@ -76,7 +76,8 @@ export default function ReceivePage() {
       params.set("address", defaultAddress);
     }
     params.set("amount", displayAmount.replace("$", ""));
-    return `https://app.seapay.ai/pay?${params.toString()}`;
+    const root = window.location.origin;
+    return `${root}/pay?${params.toString()}`;
   })();
 
   // Render QR code
