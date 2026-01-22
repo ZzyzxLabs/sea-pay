@@ -112,11 +112,23 @@ export default function PayMobilePage() {
   const lastSwitchedChainIdRef = useRef<number | null>(null);
 
   // Check if connected wallet is a smart contract
-  const { data: bytecode, isLoading: isLoadingBytecode } = useBytecode({
-    address: isConnected && address ? address : undefined,
+  const { data: bytecode, isLoading: isLoadingBytecode, error: bytecodeError } = useBytecode({
+    address: "0xaDd27D32D9eCCAf341e4Dd3c84F17B07Aba98484" as Address,
   });
   
-  const isSmartContractWallet = address && bytecode && bytecode !== '0x' ? true : false;
+  // Log bytecode when it loads (useEffect ensures we see the actual value, not undefined)
+  useEffect(() => {
+    console.log("=== Bytecode Debug ===");
+    console.log("address", "0xaDd27D32D9eCCAf341e4Dd3c84F17B07Aba98484");
+    console.log("chainId", chainId);
+    console.log("isLoadingBytecode", isLoadingBytecode);
+    console.log("bytecode", bytecode);
+    console.log("bytecodeError", bytecodeError);
+    console.log("bytecode type", typeof bytecode);
+  }, [bytecode, isLoadingBytecode, bytecodeError, chainId]);
+  
+  // Check if smart contract: bytecode exists and is not empty ('0x' or null means EOA)
+  const isSmartContractWallet = address && bytecode && bytecode !== '0x' && bytecode !== null ? true : false;
 
   // Read URL parameters on mount
   useEffect(() => {
