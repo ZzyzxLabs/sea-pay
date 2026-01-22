@@ -5,6 +5,7 @@ import { Header } from "@/components/sections/header";
 import { Hero } from "@/components/sections/hero";
 import { LaunchBanner } from "@/components/sections/launch-banner";
 import { PosQr } from "@/components/sections/pos-qr";
+import { FAQ } from "@/components/sections/faq";
 import { Footer } from "@/components/sections/footer";
 
 export default function Home() {
@@ -40,6 +41,7 @@ export default function Home() {
       <main className='relative z-10 pt-[104px]'>
         <Hero />
         <PosQr />
+        <FAQ />
       </main>
       <Footer />
     </div>

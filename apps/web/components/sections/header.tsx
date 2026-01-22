@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
   },
   {
     label: "QR & POS",
-    href: "/product/qr-pos",
+    href: "/#pos-qr",
   },
   {
     label: "FAQ",
@@ -135,8 +135,8 @@ export function Header() {
 
           {/* Right: CTA */}
           <div className='absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 hidden items-center gap-3 md:flex'>
-            <Button className='rounded-full shadow-sm shadow-sky-100 text-base'>
-              Get Early Access
+            <Button disabled className='rounded-full shadow-sm bg-slate-200 text-slate-500 hover:bg-slate-200 text-base'>
+              Coming soon
             </Button>
           </div>
 
