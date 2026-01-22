@@ -1,6 +1,8 @@
 import { Header } from "@/components/sections/header";
 import { Hero } from "@/components/sections/hero";
 import { LaunchBanner } from "@/components/sections/launch-banner";
+import { PosQr } from "@/components/sections/pos-qr";
+import { Footer } from "@/components/sections/footer";
 
 export default function Home() {
   return (
@@ -15,14 +17,16 @@ export default function Home() {
       </div>
       
       {/* Header shifted down by banner height */}
-      <div className='fixed inset-x-0 top-[44px] z-40'>
+      <div className='fixed inset-x-0 top-[40px] z-40'>
         <Header />
       </div>
       
       {/* Main content with padding for fixed header + banner */}
       <main className='relative z-10 pt-[108px]'>
         <Hero />
+        <PosQr />
       </main>
+      <Footer />
     </div>
   );
 }

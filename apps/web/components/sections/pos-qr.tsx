@@ -15,176 +15,87 @@ import { WalletButtons } from "./wallet-buttons";
 export function PosQr() {
   return (
     <section id='pos-qr' className='scroll-mt-24'>
-      <Container className='flex flex-col gap-10'>
-        <SectionHeading
-          eyebrow='POS & QR'
-          title='Accept payments in person with QR codes'
-          description='Generate dynamic QR codes for point-of-sale payments. Perfect for retail, restaurants, and in-person transactions.'
-        />
-        
-        {/* Supported Chains */}
-        <div className='flex flex-wrap justify-center items-center gap-2'>
-          <span className='text-sm font-medium text-slate-500'>
-            Supported chains:
-          </span>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Badge
-              variant='outline'
-              className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
-            >
-              <Image
-                src='/ethereum-icon.svg'
-                alt='Ethereum'
-                width={16}
-                height={16}
-                className='inline-block'
-              />
-              <span>Ethereum</span>
-            </Badge>
-            <Badge
-              variant='outline'
-              className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
-            >
-              <Image
-                src='/base-chain-icon.svg'
-                alt='Base'
-                width={16}
-                height={16}
-                className='inline-block'
-              />
-              <span>Base</span>
-            </Badge>
-            <Badge
-              variant='outline'
-              className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
-            >
-              <Image
-                src='/polygon-icon.svg'
-                alt='Polygon'
-                width={16}
-                height={16}
-                className='inline-block'
-              />
-              <span>Polygon</span>
-            </Badge>
-            <Badge
-              variant='outline'
-              className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
-            >
-              <Image
-                src='/solana-logo.svg'
-                alt='Solana'
-                width={16}
-                height={16}
-                className='inline-block'
-              />
-              <span>Solana</span>
-            </Badge>
-            <Badge
-              variant='outline'
-              className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
-            >
-              <Image
-                src='/bnb-logo.svg'
-                alt='BNB Chain'
-                width={16}
-                height={16}
-                className='inline-block'
-              />
-              <span>BNB Chain</span>
-            </Badge>
-          </div>
-        </div>
-        
+      <Container>
         <div className='grid gap-6 lg:grid-cols-[1fr_1fr]'>
-          {/* Left side: Description and benefits */}
+          {/* Left side: Title and Supported Chains */}
           <div className='space-y-6'>
-            <div className='space-y-4'>
-              <h3 className='text-2xl font-semibold text-slate-900'>
-                Fast & Secure In-Person Payments
-              </h3>
-              <p className='text-lg text-slate-600'>
-                Create payment QR codes in seconds. Customers scan with any crypto wallet to pay instantly.
-              </p>
-            </div>
-
-            <div className='space-y-4'>
-              <div className='flex items-start gap-3'>
-                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-100 flex-shrink-0'>
-                  <svg
-                    className='h-4 w-4'
-                    fill='none'
-                    viewBox='0 0 24 24'
-                    stroke='currentColor'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M5 13l4 4L19 7'
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className='font-semibold text-slate-900'>
-                    Multi-chain support
-                  </h4>
-                  <p className='text-slate-600'>
-                    Accept USDC and USDT across Base, Ethereum, Polygon, Solana, and BNB Chain
-                  </p>
-                </div>
-              </div>
-
-              <div className='flex items-start gap-3'>
-                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-100 flex-shrink-0'>
-                  <svg
-                    className='h-4 w-4'
-                    fill='none'
-                    viewBox='0 0 24 24'
-                    stroke='currentColor'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M5 13l4 4L19 7'
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className='font-semibold text-slate-900'>
-                    Real-time price conversion
-                  </h4>
-                  <p className='text-slate-600'>
-                    Automatic fiat-to-crypto conversion with live market rates
-                  </p>
-                </div>
-              </div>
-
-              <div className='flex items-start gap-3'>
-                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-100 flex-shrink-0'>
-                  <svg
-                    className='h-4 w-4'
-                    fill='none'
-                    viewBox='0 0 24 24'
-                    stroke='currentColor'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M5 13l4 4L19 7'
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className='font-semibold text-slate-900'>
-                    Instant settlement
-                  </h4>
-                  <p className='text-slate-600'>
-                    Receive funds directly to your wallet with on-chain confirmation
-                  </p>
-                </div>
+            <SectionHeading
+              eyebrow='POS & QR'
+              title='Accept payments in person with QR codes'
+              description='Generate dynamic QR codes for point-of-sale payments. Perfect for retail, restaurants, and in-person transactions.'
+            />
+            
+            {/* Supported Chains */}
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='text-sm font-medium text-slate-500'>
+                Supported chains:
+              </span>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Badge
+                  variant='outline'
+                  className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
+                >
+                  <Image
+                    src='/ethereum-icon.svg'
+                    alt='Ethereum'
+                    width={16}
+                    height={16}
+                    className='inline-block'
+                  />
+                  <span>Ethereum</span>
+                </Badge>
+                <Badge
+                  variant='outline'
+                  className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
+                >
+                  <Image
+                    src='/base-chain-icon.svg'
+                    alt='Base'
+                    width={16}
+                    height={16}
+                    className='inline-block'
+                  />
+                  <span>Base</span>
+                </Badge>
+                <Badge
+                  variant='outline'
+                  className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
+                >
+                  <Image
+                    src='/polygon-icon.svg'
+                    alt='Polygon'
+                    width={16}
+                    height={16}
+                    className='inline-block'
+                  />
+                  <span>Polygon</span>
+                </Badge>
+                <Badge
+                  variant='outline'
+                  className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
+                >
+                  <Image
+                    src='/solana-logo.svg'
+                    alt='Solana'
+                    width={16}
+                    height={16}
+                    className='inline-block'
+                  />
+                  <span>Solana</span>
+                </Badge>
+                <Badge
+                  variant='outline'
+                  className='inline-flex items-center justify-center gap-1.5 border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
+                >
+                  <Image
+                    src='/bnb-logo.svg'
+                    alt='BNB Chain'
+                    width={16}
+                    height={16}
+                    className='inline-block'
+                  />
+                  <span>BNB Chain</span>
+                </Badge>
               </div>
             </div>
           </div>

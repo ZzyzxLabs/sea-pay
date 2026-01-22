@@ -128,11 +128,14 @@ export function Hero() {
             {/* Text Content */}
             <div className='space-y-3 sm:space-y-4 text-center lg:text-left'>
               <h1 className='text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-5xl'>
-                Start to Spend and Invest Asia <span className='text-sky-600'>&lt;-&gt;</span> Worldwide
+                Spend and Invest Anywhere 
               </h1>
+              <h2 className='text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-5xl'>
+                Asia <span className='text-sky-600'>&lt;-&gt;</span> Worldwide
+              </h2>
               <p className='text-sm text-slate-600 sm:text-base lg:text-lg'>
-                We enable APAC international students to spend abroad and invest in U.S. stocks with their parents' money.
-              </p>
+                We enable APAC international students to spend and invest in U.S. stocks with their parents' money.
+              </p> 
             </div>
 
             {/* Newsletter Signup */}
@@ -182,7 +185,7 @@ export function Hero() {
                         disabled={formStatus === "submitting"}
                         className='h-11 w-full rounded-full bg-sky-600 px-6 text-sm font-medium text-white hover:bg-sky-700 sm:w-auto'
                       >
-                        {formStatus === "submitting" ? "..." : "Sign up"}
+                        {formStatus === "submitting" ? "..." : "Get Early Access"}
                       </Button>
                     </div>
                     <p className='text-xs text-slate-600 sm:text-sm'>
@@ -190,60 +193,6 @@ export function Hero() {
                     </p>
                   </form>
                 )}
-              </div>
-            </div>
-
-            {/* Contact Links */}
-            <div className='rounded-lg bg-white/70 backdrop-blur-sm border border-slate-200 p-3 sm:p-4'>
-              <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3'>
-                <span className='text-xs sm:text-sm font-medium text-slate-600'>Contact:</span>
-                <div className='flex items-center gap-2'>
-                  <Link
-                    href='https://x.com/seapayAI'
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-                    aria-label='Follow us on X'
-                  >
-                    <Image
-                      src='/x-icon.svg'
-                      alt='X'
-                      width={16}
-                      height={16}
-                      className='h-4 w-4'
-                    />
-                  </Link>
-                  {/* <Link
-                    href='https://discord.gg/seapayAI'
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-                    aria-label='Join our Discord'
-                  >
-                    <Image
-                      src='/discord-logo.svg'
-                      alt='Discord'
-                      width={16}
-                      height={16}
-                      className='h-4 w-4'
-                    />
-                  </Link> */}
-                  <Link
-                    href='https://t.me/seapayai'
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-                    aria-label='Join our Telegram'
-                  >
-                    <Image
-                      src='/telegram-icon.svg'
-                      alt='Telegram'
-                      width={16}
-                      height={16}
-                      className='h-4 w-4'
-                    />
-                  </Link>
-                </div>
               </div>
             </div>
           </div>
