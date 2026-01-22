@@ -5,10 +5,6 @@ import { useEffect, useState } from "react";
 import {
   Menu,
   ChevronDown,
-  Book,
-  Code,
-  FileCode,
-  Terminal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +52,6 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -64,13 +59,13 @@ export function Header() {
   }, []);
 
   return (
-    <header className='w-full'>
+    <div className='w-full'>
       <div
         className={[
-          "transition-all border-bi duration-300",
+          "transition-all border-b duration-300",
           scrolled
-            ? "bg-white/50 backdrop-blur-md shadow-sm border-white/30 hover:bg-white"
-            : "bg-transparent border-transparent",
+            ? "bg-white/80 backdrop-blur-md shadow-sm border-slate-200/60"
+            : "bg-white/50 backdrop-blur-sm border-transparent",
         ].join(" ")}
       >
         <div className='relative mx-auto h-[64px] w-full max-w-[1280px] sm:px-6 lg:px-6'>
@@ -147,67 +142,56 @@ export function Header() {
 
           {/* Mobile: menu */}
           <div className='absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 md:hidden'>
-            {mounted ? (
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    className='rounded-full'
-                    aria-label='Open menu'
-                  >
-                    <Menu className='h-5 w-5' />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side='right' className='w-[320px]'>
-                  <div className='flex flex-col gap-6 pt-6'>
-                    <div className='text-base font-semibold text-slate-900'>
-                      Menu
-                    </div>
-                    <nav className='flex flex-col gap-3'>
-                      {navItems.map((item) => (
-                        <SheetClose asChild key={item.href}>
-                          <Link
-                            href={item.href}
-                            className='text-lg text-slate-800 hover:text-slate-950'
-                          >
-                            {item.label}
-                          </Link>
-                        </SheetClose>
-                      ))}
-                    </nav>
-                    <div className='h-px bg-slate-200' />
-                    <div className='flex flex-col gap-3'>
-                      <SheetClose asChild>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='rounded-full'
+                  aria-label='Open menu'
+                >
+                  <Menu className='h-5 w-5' />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side='right' className='w-[320px]'>
+                <div className='flex flex-col gap-6 pt-6'>
+                  <div className='text-base font-semibold text-slate-900'>
+                    Menu
+                  </div>
+                  <nav className='flex flex-col gap-3'>
+                    {navItems.map((item) => (
+                      <SheetClose asChild key={item.href}>
                         <Link
-                          href='#pricing'
-                          className='text-base text-slate-700 hover:text-slate-900'
+                          href={item.href}
+                          className='text-lg text-slate-800 hover:text-slate-950'
                         >
-                          Pricing
+                          {item.label}
                         </Link>
                       </SheetClose>
-                      <SheetClose asChild>
-                        <Button className='w-full rounded-full shadow-sm shadow-sky-100 text-base'>
-                          <a href='#cta'>Get started</a>
-                        </Button>
-                      </SheetClose>
-                    </div>
+                    ))}
+                  </nav>
+                  <div className='h-px bg-slate-200' />
+                  <div className='flex flex-col gap-3'>
+                    <SheetClose asChild>
+                      <Link
+                        href='#pricing'
+                        className='text-base text-slate-700 hover:text-slate-900'
+                      >
+                        Pricing
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button className='w-full rounded-full shadow-sm shadow-sky-100 text-base'>
+                        <a href='#cta'>Get started</a>
+                      </Button>
+                    </SheetClose>
                   </div>
-                </SheetContent>
-              </Sheet>
-            ) : (
-              <Button
-                variant='ghost'
-                size='icon'
-                className='rounded-full'
-                aria-label='Open menu'
-              >
-                <Menu className='h-5 w-5' />
-              </Button>
-            )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
-    </header>
+    </div>
   );
 }

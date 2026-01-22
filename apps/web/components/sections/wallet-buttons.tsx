@@ -22,7 +22,6 @@ export function WalletButtons() {
             selectedWallet === "coinbase" &&
               "ring-2 ring-slate-400 ring-offset-2 border-slate-400"
           )}
-          autoFocus
         >
           <Image
             src='/coinbase-wallet-icon.png'
