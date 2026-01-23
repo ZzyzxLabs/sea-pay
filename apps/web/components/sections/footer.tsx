@@ -11,7 +11,7 @@ export function Footer() {
         </p>
         <div className="flex items-center gap-3">
           <Link
-            href='https://x.com/seapayAI'
+            href='https://x.com/seapay_ai'
             target='_blank'
             rel='noopener noreferrer'
             className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
