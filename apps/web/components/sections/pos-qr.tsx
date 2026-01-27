@@ -336,11 +336,11 @@ function QRCodeGenerator() {
         </div>
 
         {/* Money Input and Token Selector */}
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
           {/* Money Input Box - 50% width */}
-          <div className='flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden flex-1 h-14'>
+          <div className='flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden flex-1 min-h-[3.5rem]'>
             {/* Currency Symbol Segment */}
-            <div className='flex items-center justify-center h-14 pl-5 pr-4 bg-slate-100 border-r border-slate-200 sm:pl-6 sm:pr-5'>
+            <div className='flex items-center justify-center self-stretch pl-5 pr-4 bg-slate-100 border-r border-slate-200 sm:pl-6 sm:pr-5'>
               <span className='text-lg font-bold text-slate-900 sm:text-xl'>
                 $
               </span>
@@ -369,9 +369,9 @@ function QRCodeGenerator() {
         </div>
 
         {/* Transaction Details */}
-        <div className='space-y-2'>
+        <div className='space-y-3'>
           {/* Receiver */}
-          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
+          <div className='flex min-h-[3.5rem] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 sm:px-5'>
             <div className='flex w-full items-center justify-between gap-3'>
               {isReceiverValid ? (
                 <Image
@@ -393,14 +393,14 @@ function QRCodeGenerator() {
                   setReceiver(e.target.value)
                 }
                 placeholder='EVM (0x...) / Solana / Bitcoin address...'
-                className='h-14 flex-1 border-0 bg-transparent p-0 text-left text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 placeholder:text-left sm:text-base'
+                className='h-10 sm:h-12 flex-1 border-0 bg-transparent p-0 text-left text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-0 placeholder:text-left sm:text-base'
               />
             </div>
           </div>
 
           {/* Quote */}
-          <div className='flex h-14 items-center rounded-lg border border-slate-200 bg-white px-4 sm:px-5'>
-            <div className='flex flex-wrap items-center gap-2 text-sm text-slate-900 sm:gap-2.5 sm:text-base'>
+          <div className='flex min-h-[3.5rem] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 sm:px-5'>
+            <div className='flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-900 sm:gap-x-2.5 sm:text-base'>
               <span className='whitespace-nowrap font-bold'>Quote:</span>
               <span className='whitespace-nowrap font-medium'>
                 {amount || "0"} {fiatCurrency} →

@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: "Seapay | Stablecoin payments for businesses",
   description:
     "Accept stablecoin payments with instant settlement, low fees, and enterprise-grade security. Built for modern internet businesses.",
+  icons: {
+    icon: "/seapay-logo-64x64.png",
+    apple: "/seapay-logo-64x64.png",
+  },
 };
 
 export default function RootLayout({

@@ -38,7 +38,7 @@ export default function Home() {
       </header>
       
       {/* Main content with stable padding to prevent layout shifts */}
-      <main className='relative z-10 pt-[104px]'>
+      <main className='relative z-10 pt-[96px] sm:pt-[104px]'>
         <Hero />
         <PosQr />
         <FAQ />

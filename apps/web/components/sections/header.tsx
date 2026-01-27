@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Menu,
+  X,
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const navItems: NavItem[] = [
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -142,51 +144,59 @@ export function Header() {
 
           {/* Mobile: menu */}
           <div className='absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 md:hidden'>
-            <Sheet>
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant='ghost'
                   size='icon'
-                  className='rounded-full'
+                  className='rounded-full size-11 hover:bg-slate-100/80'
                   aria-label='Open menu'
                 >
-                  <Menu className='h-5 w-5' />
+                  <Menu className='h-6 w-6 text-slate-700' strokeWidth={2} />
                 </Button>
               </SheetTrigger>
-              <SheetContent side='right' className='w-[320px]'>
-                <div className='flex flex-col gap-6 pt-6'>
-                  <div className='text-base font-semibold text-slate-900'>
-                    Menu
-                  </div>
-                  <nav className='flex flex-col gap-3'>
+              <SheetContent
+                side='right'
+                className='w-full max-w-full sm:w-full sm:max-w-full h-full bg-white border-0 p-0 flex flex-col'
+              >
+                {/* X on the menu – top right */}
+                <div className='flex items-center justify-end shrink-0 px-4 pt-4 pb-2'>
+                  <SheetClose asChild>
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      className='rounded-full size-11 text-black hover:bg-slate-100 hover:text-black'
+                      aria-label='Close menu'
+                    >
+                      <X className='h-6 w-6' strokeWidth={2.25} />
+                    </Button>
+                  </SheetClose>
+                </div>
+                {/* Nav links – full-bleed scroll area */}
+                <nav className='flex-1 flex flex-col px-5 pb-6 overflow-auto'>
+                  <div className='flex flex-col gap-1'>
                     {navItems.map((item) => (
                       <SheetClose asChild key={item.href}>
                         <Link
                           href={item.href}
-                          className='text-lg text-slate-800 hover:text-slate-950'
+                          className='rounded-lg py-4 px-3 text-[17px] font-medium text-black hover:bg-slate-100 transition-colors'
                         >
                           {item.label}
                         </Link>
                       </SheetClose>
                     ))}
-                  </nav>
-                  <div className='h-px bg-slate-200' />
-                  <div className='flex flex-col gap-3'>
+                  </div>
+                  <div className='mt-auto pt-6'>
                     <SheetClose asChild>
-                      <Link
-                        href='#pricing'
-                        className='text-base text-slate-700 hover:text-slate-900'
+                      <Button
+                        asChild
+                        className='w-full rounded-full h-12 text-base font-semibold bg-slate-900 text-white hover:bg-slate-800'
                       >
-                        Pricing
-                      </Link>
-                    </SheetClose>
-                    <SheetClose asChild>
-                      <Button className='w-full rounded-full shadow-sm shadow-sky-100 text-base'>
                         <a href='#cta'>Get started</a>
                       </Button>
                     </SheetClose>
                   </div>
-                </div>
+                </nav>
               </SheetContent>
             </Sheet>
           </div>

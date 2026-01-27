@@ -188,9 +188,6 @@ export function Hero() {
                         {formStatus === "submitting" ? "..." : "Get Early Access"}
                       </Button>
                     </div>
-                    <p className='text-xs text-slate-600 sm:text-sm'>
-                      Sign up for our newsletter and be first to try the product.
-                    </p>
                   </form>
                 )}
               </div>
@@ -198,10 +195,10 @@ export function Hero() {
           </div>
 
           {/* Right side: iPhone Mockup */}
-          <div className='relative hidden w-full lg:flex items-center justify-center'>
-            <div className='relative'>
+          <div className='relative hidden md:flex w-full items-center justify-center pt-8 lg:pt-0'>
+            <div className='relative scale-90 sm:scale-100 lg:scale-100'>
               {/* iPhone Frame */}
-              <div className='relative w-[240px] xl:w-[300px] 2xl:w-[360px]'>
+              <div className='relative w-[240px] md:w-[260px] lg:w-[240px] xl:w-[300px] 2xl:w-[360px]'>
                 {/* Phone outer frame with notch */}
                 <div className='relative rounded-[2rem] xl:rounded-[2.5rem] bg-slate-900 p-1.5 xl:p-2 shadow-2xl ring-1 ring-slate-900/10'>
                   {/* Screen */}
