@@ -1,0 +1,28 @@
+{
+  "name": "@seapay/alchemy-erc4337",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aa-sdk/core": "^4.83.0",
+    "@account-kit/infra": "^4.83.0",
+    "@account-kit/smart-contracts": "^4.83.0",
+    "viem": "^2.44.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.27",
+    "typescript": "^5.9.3"
+  }
+}

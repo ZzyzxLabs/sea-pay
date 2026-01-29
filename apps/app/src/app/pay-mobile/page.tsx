@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useAccount, useConnect, useDisconnect, useWalletClient, useChainId, useSwitchChain } from "wagmi";
+import { useWalletType } from "@/lib/web3/useWalletType";
 import {
   buildTypedData,
   buildMessage,
@@ -89,7 +90,7 @@ const DEFAULT_USDC_RECIPIENT =
 const DEFAULT_USDC_AMOUNT = BigInt("100");
 
 export default function PayMobilePage() {
-  const { address, isConnected, connector } = useAccount();
+  const { address, isConnected } = useAccount();
   const { connect, connectors, isPending, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
@@ -182,6 +183,27 @@ export default function PayMobilePage() {
       setError(null);
     }
   }, [isConnected, address]);
+
+  // Detect wallet type (EOA vs Smart Contract Wallet)
+  const { walletType, isLoading: isWalletTypeLoading, hasCapabilities, hasBytecode, debug } = useWalletType();
+  const { connector } = useAccount();
+
+  const getWalletTypeDisplay = () => {
+    if (isWalletTypeLoading) return "Detecting wallet type...";
+
+    const detectionMethod = hasCapabilities ? " (via EIP-5792)" : hasBytecode ? " (via bytecode)" : "";
+    const connectorInfo = connector ? ` [${connector.name}]` : "";
+
+    switch (walletType) {
+      case "smart-wallet":
+        return `✅ Smart Wallet (ERC-4337)${detectionMethod}${connectorInfo}`;
+      case "eoa":
+        return `ℹ️ EOA (ERC-3009)${detectionMethod}${connectorInfo}`;
+      default:
+        return `Unknown${connectorInfo}`;
+    }
+  };
+
 
   const signTransferWithAuthorization = useCallback(
     async (asset: Asset, to: string, value: bigint) => {
@@ -437,6 +459,10 @@ export default function PayMobilePage() {
           <div className={styles.statusRow} style={{ marginTop: "0.5rem" }}>
             <span className={styles.statusLabel}>Asset</span>
             <span className={styles.statusValue}>USDC</span>
+          </div>
+          <div className={styles.statusRow} style={{ marginTop: "0.5rem" }}>
+            <span className={styles.statusLabel}>Wallet Type</span>
+            <span className={styles.statusValue}>{getWalletTypeDisplay()}</span>
           </div>
         </div>
 
