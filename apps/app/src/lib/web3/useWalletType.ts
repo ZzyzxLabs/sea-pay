@@ -39,6 +39,15 @@ export function useWalletType(): WalletTypeResult {
 
   // 1. Check EIP-5792 capabilities
   // This works for wallets that support the capabilities API (e.g., Coinbase Smart Wallet)
+  // Note: Only query for wallets likely to support EIP-5792 to avoid 400 errors
+
+  // Wallets that typically DON'T support wallet_getCapabilities (yet)
+  const knownUnsupportedConnectors = ['metaMask', 'injected'];
+  const shouldCheckCapabilities =
+    !!address &&
+    isConnected &&
+    (!connector?.id || !knownUnsupportedConnectors.includes(connector.id));
+
   const {
     data: capabilities,
     isLoading: isLoadingCapabilities,
@@ -46,9 +55,13 @@ export function useWalletType(): WalletTypeResult {
   } = useCapabilities({
     account: address as Address,
     query: {
-      enabled: !!address && isConnected,
+      enabled: shouldCheckCapabilities,
       retry: false,
-      staleTime: 30_000, // Cache for 30 seconds
+      staleTime: Infinity, // Cache indefinitely - wallet type doesn't change
+      gcTime: Infinity, // Keep in cache forever
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+      refetchOnMount: false, // Don't refetch if we have data
+      refetchOnReconnect: false, // Don't refetch on reconnect
     },
   });
 
@@ -70,15 +83,26 @@ export function useWalletType(): WalletTypeResult {
   const result = useMemo((): WalletTypeResult => {
     const isLoading = isLoadingCapabilities || isLoadingBytecode;
 
-    // Check capabilities for smart wallet indicators
-    const chainIdHex = `0x${chainId.toString(16)}`;
-    const chainCaps = (capabilities as Record<string, Record<string, { supported?: boolean }>> | undefined)?.[chainIdHex];
-    const hasCapabilities = !!(
-      chainCaps?.paymasterService?.supported ||
-      chainCaps?.atomicBatch?.supported
-    );
+    // Check capabilities for smart wallet indicators across ALL chains
+    // A smart wallet is a smart wallet regardless of current chain
+    let hasCapabilities = false;
 
-    // Check if bytecode exists (and is not empty "0x")
+    if (capabilities && typeof capabilities === "object") {
+      // Iterate through all chains in capabilities
+      for (const chainIdKey of Object.keys(capabilities)) {
+        const chainCaps = (capabilities as Record<string, Record<string, { supported?: boolean }>>)[chainIdKey];
+
+        if (
+          chainCaps?.paymasterService?.supported ||
+          chainCaps?.atomicBatch?.supported
+        ) {
+          hasCapabilities = true;
+          break;
+        }
+      }
+    }
+
+    // Check if bytecode exists on current chain (and is not empty "0x")
     const hasBytecode = !!bytecode && bytecode !== "0x" && bytecode.length > 2;
 
     // Determine wallet type
@@ -89,7 +113,7 @@ export function useWalletType(): WalletTypeResult {
     } else if (isLoading) {
       walletType = "unknown";
     } else if (hasCapabilities || hasBytecode) {
-      // Either capabilities indicate smart wallet OR bytecode exists
+      // Either capabilities indicate smart wallet (on any chain) OR bytecode exists (on current chain)
       walletType = "smart-wallet";
     } else if (capabilitiesError || capabilities !== undefined || bytecode !== undefined) {
       // We've completed checks and found no smart wallet indicators
@@ -110,7 +134,6 @@ export function useWalletType(): WalletTypeResult {
   }, [
     address,
     isConnected,
-    chainId,
     capabilities,
     capabilitiesError,
     bytecode,

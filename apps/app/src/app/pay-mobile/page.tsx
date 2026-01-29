@@ -186,17 +186,21 @@ export default function PayMobilePage() {
 
   // Detect wallet type (EOA vs Smart Contract Wallet)
   const { walletType, isLoading: isWalletTypeLoading, hasCapabilities, hasBytecode, debug } = useWalletType();
+  const { connector } = useAccount();
 
   const getWalletTypeDisplay = () => {
     if (isWalletTypeLoading) return "Detecting wallet type...";
 
+    const detectionMethod = hasCapabilities ? " (via EIP-5792)" : hasBytecode ? " (via bytecode)" : "";
+    const connectorInfo = connector ? ` [${connector.name}]` : "";
+
     switch (walletType) {
       case "smart-wallet":
-        return `✅ Smart Wallet (ERC-4337)${hasCapabilities ? " - via capabilities" : ""}${hasBytecode ? " - has bytecode" : ""}`;
+        return `✅ Smart Wallet (ERC-4337)${detectionMethod}${connectorInfo}`;
       case "eoa":
-        return "ℹ️ EOA (ERC-3009)";
+        return `ℹ️ EOA (ERC-3009)${detectionMethod}${connectorInfo}`;
       default:
-        return "Unknown";
+        return `Unknown${connectorInfo}`;
     }
   };
 
