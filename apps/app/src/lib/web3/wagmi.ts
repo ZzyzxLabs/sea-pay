@@ -23,9 +23,12 @@ export const config = createConfig({
     }),
 
     // Coinbase Wallet connector
+    // preference.options: 'all' allows both EOA and Smart Wallet modes
+    // The user's wallet setting determines which is used
     coinbaseWallet({
       appName: "SeaPay",
       appLogoUrl: "https://seapay.ai/logo.png",
+      preference: { options: "all" },
     }),
 
     // injected(),
