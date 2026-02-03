@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { buildDeeplinkUrl } from "@seapay/deeplink";
-import QRCodeStyling from "qr-code-styling";
+import { useStyledQrCode } from "@seapay/deeplink/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -116,29 +115,7 @@ function QRCodeGenerator() {
   const [cryptoPrice, setCryptoPrice] = useState<number>(1);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
-  const qrCodeInstance = useRef<QRCodeStyling | null>(null);
-  const [qrSize, setQrSize] = useState(300);
 
-  // Calculate responsive QR code size
-  useEffect(() => {
-    const updateQrSize = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        // Mobile: smaller QR code
-        setQrSize(240);
-      } else if (width < 1024) {
-        // Tablet: medium QR code
-        setQrSize(280);
-      } else {
-        // Desktop: full size
-        setQrSize(300);
-      }
-    };
-
-    updateQrSize();
-    window.addEventListener("resize", updateQrSize);
-    return () => window.removeEventListener("resize", updateQrSize);
-  }, []);
 
   // Parse amount by removing commas
   const parseAmount = (value: string): number => {
@@ -203,81 +180,33 @@ function QRCodeGenerator() {
     fetchPrice();
   }, [currency, fiatCurrency]);
 
-  useEffect(() => {
-    const generateQrCode = async () => {
-      try {
-        // Build payment URL with parameters
-        const params = new URLSearchParams();
-        if (receiver) {
-          params.set("address", receiver);
-        }
-        // Use the converted crypto amount instead of fiat amount
-        if (amount && cryptoAmount > 0) {
-          params.set("amount", cryptoAmount.toFixed(6));
-        }
-        if (currency) {
-          const [token] = currency.split("-");
-          params.set("asset", token);
-        }
+  // Build the payment URL
+  const paymentUrl = (() => {
+    const params = new URLSearchParams();
+    if (receiver) {
+      params.set("address", receiver);
+    }
+    // Use the converted crypto amount instead of fiat amount
+    if (amount && cryptoAmount > 0) {
+      params.set("amount", cryptoAmount.toFixed(6));
+    }
+    if (currency) {
+      const [token] = currency.split("-");
+      params.set("asset", token);
+    }
 
-        // Create full URL and encode it for deeplink
-        const paymentUrl = `app.seapay.ai/pay-mobile?${params.toString()}`;
-        const deeplinkUrl = buildDeeplinkUrl(paymentUrl);
-        console.log("Deeplink URL:", deeplinkUrl);
+    // Check if we're in browser environment
+    if (typeof window === "undefined") return null;
 
-        // Create or update QR code with styling
-        if (!qrCodeInstance.current) {
-          qrCodeInstance.current = new QRCodeStyling({
-            width: qrSize,
-            height: qrSize,
-            data: deeplinkUrl,
-            margin: 4,
-            qrOptions: {
-              typeNumber: 0,
-              mode: "Byte",
-              errorCorrectionLevel: "Q",
-            },
-            imageOptions: {
-              hideBackgroundDots: true,
-              imageSize: 0.4,
-              margin: 8,
-            },
-            dotsOptions: {
-              color: "#1e293b",
-              type: "rounded",
-            },
-            backgroundOptions: {
-              color: "#ffffff",
-            },
-            cornersSquareOptions: {
-              color: "#0f172a",
-              type: "extra-rounded",
-            },
-            cornersDotOptions: {
-              color: "#0f172a",
-              type: "dot",
-            },
-          });
-        } else {
-          qrCodeInstance.current.update({
-            data: deeplinkUrl,
-            width: qrSize,
-            height: qrSize,
-          });
-        }
+    const root = window.location.origin;
+    return `${root}/pay?${params.toString()}`;
+  })();
 
-        // Append to DOM if ref is available
-        if (qrCodeRef.current) {
-          qrCodeRef.current.innerHTML = "";
-          qrCodeInstance.current.append(qrCodeRef.current);
-        }
-      } catch (error) {
-        console.error("Failed to generate QR code:", error);
-      }
-    };
-
-    generateQrCode();
-  }, [receiver, amount, currency, cryptoAmount, qrSize]);
+  // Render QR code using the hook
+  useStyledQrCode(paymentUrl, qrCodeRef, {
+    width: 300,
+    height: 300,
+  });
 
   const tokenOptions = [
     { token: "USDC", blockchain: "Base", value: "USDC-BASE" },

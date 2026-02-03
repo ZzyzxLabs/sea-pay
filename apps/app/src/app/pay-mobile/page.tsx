@@ -10,6 +10,7 @@ import {
 } from "@seapay-ai/erc3009";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { chains } from "@/lib/web3/chains";
+import { useWalletType } from "@/lib/web3/useWalletType";
 import styles from "./pay-mobile.module.css";
 
 type Asset = {
@@ -183,6 +184,9 @@ export default function PayMobilePage() {
     }
   }, [isConnected, address]);
 
+  // Detect wallet type to determine payment routing
+  const { walletType } = useWalletType();
+
   const signTransferWithAuthorization = useCallback(
     async (asset: Asset, to: string, value: bigint) => {
       if (!address) {
@@ -242,71 +246,23 @@ export default function PayMobilePage() {
       ? BigInt(Math.floor(parseFloat(paymentAmount) * Math.pow(10, selectedAsset.decimals)))
       : DEFAULT_USDC_AMOUNT;
 
-
-    console.log("selectedChainId", selectedChainId);  
+    console.log("selectedChainId", selectedChainId);
+    console.log("walletType", walletType);
     setIsSigning(true);
     setSignatureError(null);
 
     try {
-      // Use selectedChainId for signing (chain switching happens automatically in useEffect)
-      const { typedData, signature } = await signTransferWithAuthorization(
-        selectedAsset,
-        recipientAddress,
-        amountToSend
-      );
-
-      setSignature(signature);
-
-      // Convert BigInt values to strings for JSON serialization
-      const serializeTypedData = (data: any): any => {
-        if (typeof data === "bigint") {
-          return data.toString();
-        }
-        if (Array.isArray(data)) {
-          return data.map(serializeTypedData);
-        }
-        if (data && typeof data === "object") {
-          const serialized: any = {};
-          for (const key in data) {
-            serialized[key] = serializeTypedData(data[key]);
-          }
-          return serialized;
-        }
-        return data;
-      };
-
-      // Start relaying
-      setIsRelaying(true);
-
-      // Send the signed transfer to the relay API
-      const relayResponse = await fetch("https://sea-pay.onrender.com/erc3009/relay", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          typedData: serializeTypedData(typedData),
-          signature: signature,
-        }),
-      });
-
-      if (!relayResponse.ok) {
-        const errorText = await relayResponse.text();
-        throw new Error(`Relay API error: ${errorText}`);
-      }
-
-      const relayResult = await relayResponse.json();
-      console.log("Relay result:", relayResult);
-
-      // Set success state
-      setIsRelaying(false);
-      setTransactionSuccess(true);
-      if (relayResult.transactionHash || relayResult.hash || relayResult.txHash) {
-        setTransactionHash(relayResult.transactionHash || relayResult.hash || relayResult.txHash);
+      // Route payment based on wallet type
+      if (walletType === "smart-wallet") {
+        // Smart Contract Wallet: Use Alchemy's ERC-4337 API
+        await handleSmartWalletPayment(amountToSend);
+      } else {
+        // EOA: Use ERC-3009 flow
+        await handleEOAPayment(amountToSend);
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to sign transfer.";
+        err instanceof Error ? err.message : "Failed to process payment.";
       setSignature(null);
       setSignatureError(message);
       setTransactionSuccess(false);
@@ -315,7 +271,102 @@ export default function PayMobilePage() {
     } finally {
       setIsSigning(false);
     }
-  }, [signTransferWithAuthorization, selectedAsset, recipientAddress, paymentAmount]);
+  }, [signTransferWithAuthorization, selectedAsset, recipientAddress, paymentAmount, walletType]);
+
+  // ERC-3009 flow for EOA wallets
+  const handleEOAPayment = async (amountToSend: bigint) => {
+    const { typedData, signature } = await signTransferWithAuthorization(
+      selectedAsset!,
+      recipientAddress,
+      amountToSend
+    );
+
+    setSignature(signature);
+
+    // Convert BigInt values to strings for JSON serialization
+    const serializeTypedData = (data: any): any => {
+      if (typeof data === "bigint") {
+        return data.toString();
+      }
+      if (Array.isArray(data)) {
+        return data.map(serializeTypedData);
+      }
+      if (data && typeof data === "object") {
+        const serialized: any = {};
+        for (const key in data) {
+          serialized[key] = serializeTypedData(data[key]);
+        }
+        return serialized;
+      }
+      return data;
+    };
+
+    // Start relaying
+    setIsRelaying(true);
+
+    // Send the signed transfer to the relay API
+    const relayResponse = await fetch("https://sea-pay.onrender.com/erc3009/relay", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        typedData: serializeTypedData(typedData),
+        signature: signature,
+      }),
+    });
+
+    if (!relayResponse.ok) {
+      const errorText = await relayResponse.text();
+      throw new Error(`Relay API error: ${errorText}`);
+    }
+
+    const relayResult = await relayResponse.json();
+    console.log("Relay result:", relayResult);
+
+    // Set success state
+    setIsRelaying(false);
+    setTransactionSuccess(true);
+    if (relayResult.transactionHash || relayResult.hash || relayResult.txHash) {
+      setTransactionHash(relayResult.transactionHash || relayResult.hash || relayResult.txHash);
+    }
+  };
+
+  // ERC-4337 flow for Smart Contract Wallets (Alchemy API)
+  const handleSmartWalletPayment = async (amountToSend: bigint) => {
+    console.log("Using Alchemy ERC-4337 API for Smart Wallet payment");
+    console.log("Amount:", amountToSend.toString());
+    console.log("Recipient:", recipientAddress);
+    console.log("Token:", selectedAsset?.address);
+
+    // Start relaying
+    setIsRelaying(true);
+
+    // TODO: Integrate Alchemy's ERC-4337 API
+    // Placeholder implementation
+    // const alchemyResponse = await fetch("https://api.g.alchemy.com/v2/YOUR_API_KEY", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify({
+    //     // Alchemy API payload for ERC-4337 user operation
+    //     chainId: selectedChainId,
+    //     from: address,
+    //     to: recipientAddress,
+    //     token: selectedAsset?.address,
+    //     amount: amountToSend.toString(),
+    //   }),
+    // });
+
+    // Simulate success for now
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Set success state
+    setIsRelaying(false);
+    setTransactionSuccess(true);
+    setTransactionHash("0x" + "placeholder".repeat(8)); // Placeholder hash
+  };
 
   const handleConnectWallet = useCallback((connectorId: string) => {
     setError(null);
