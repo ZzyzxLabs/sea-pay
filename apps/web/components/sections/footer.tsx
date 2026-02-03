@@ -9,40 +9,16 @@ export function Footer() {
         <p className="text-xs text-slate-400">
           © {new Date().getFullYear()} Seapay. All rights reserved.
         </p>
-        <div className="flex items-center gap-3">
-          <Link
-            href='https://x.com/seapay_ai'
-            target='_blank'
-            rel='noopener noreferrer'
-            className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-            aria-label='Follow us on X'
-          >
-            <Image
-              src='/x-icon.svg'
-              alt='X'
-              width={16}
-              height={16}
-              className='h-4 w-4'
-            />
+        <div className="flex items-center gap-4 text-xs text-slate-500">
+          <Link href="/terms/terms-of-service" className="hover:text-slate-900">
+            Terms of Service
           </Link>
-          <Link
-            href='https://t.me/seapayai'
-            target='_blank'
-            rel='noopener noreferrer'
-            className='flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200'
-            aria-label='Join our Telegram'
-          >
-            <Image
-              src='/telegram-icon.svg'
-              alt='Telegram'
-              width={16}
-              height={16}
-              className='h-4 w-4'
-            />
+          <span aria-hidden="true">•</span>
+          <Link href="/terms/privacy-policy" className="hover:text-slate-900">
+            Privacy Policy
           </Link>
         </div>
       </Container>
     </footer>
   );
 }
-
